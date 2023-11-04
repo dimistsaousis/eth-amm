@@ -3,8 +3,10 @@ use ethers::abi::{ParamType, Token};
 use ethers::prelude::abigen;
 use ethers::providers::Middleware;
 use ethers::types::{Bytes, H160, U256};
+use futures::future;
+use indicatif::ProgressBar;
 use std::fmt;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 abigen!(
     IGetUniswapV2PairsBatchRequest,
@@ -25,7 +27,7 @@ fn get_pool_from_tokens(tokens: Vec<Token>, address: H160, fee: u32) -> Option<U
 }
 
 #[derive(Debug)]
-struct PairsAddressesBatchError {
+pub struct PairsAddressesBatchError {
     factory: H160,
     start: U256,
     end: U256,
@@ -42,11 +44,12 @@ impl fmt::Display for PairsAddressesBatchError {
     }
 }
 
-async fn get_pairs_addresses_batch<M: Middleware>(
+async fn get_pair_addresses_batch<M: Middleware>(
     factory: H160,
     start: U256,
     end: U256,
     middleware: Arc<M>,
+    progress_bar: Option<Arc<Mutex<ProgressBar>>>,
 ) -> Result<Vec<H160>, PairsAddressesBatchError> {
     let mut pairs = vec![];
     let constructor_args = Token::Tuple(vec![
@@ -97,7 +100,44 @@ async fn get_pairs_addresses_batch<M: Middleware>(
         }
     }
 
+    if let Some(pb) = progress_bar {
+        pb.lock().unwrap().inc(end.as_u64() - start.as_u64());
+    }
+
     Ok(pairs)
+}
+
+pub async fn get_pair_addresses_concurrent<M: Middleware>(
+    factory: H160,
+    start: usize,
+    end: usize,
+    step: usize,
+    middleware: Arc<M>,
+) -> Result<Vec<H160>, PairsAddressesBatchError> {
+    let size = end - start;
+    let pb = ProgressBar::new(size as u64);
+    let shared_pb = Arc::new(Mutex::new(pb));
+    let mut futures: Vec<_> = vec![];
+    for i in (start..end).step_by(step) {
+        futures.push(get_pair_addresses_batch(
+            factory,
+            U256::from(i),
+            U256::from((i + step).min(end)),
+            middleware.clone(),
+            Some(shared_pb.clone()),
+        ));
+    }
+    let results = future::join_all(futures).await;
+    let mut pair_addresses = vec![];
+    for result in results {
+        match result {
+            Ok(addresses) => pair_addresses.extend(addresses),
+            Err(err) => {
+                return Err(err);
+            }
+        }
+    }
+    Ok(pair_addresses)
 }
 
 #[cfg(test)]
@@ -119,31 +159,60 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_get_pairs_addresses_batch_success() {
+    async fn test_get_pair_addresses_batch_success() {
         let SetupResult(factory, middleware) = setup();
-        let result = get_pairs_addresses_batch(factory, U256::from(0), U256::from(10), middleware)
+        let result =
+            get_pair_addresses_batch(factory, U256::from(0), U256::from(10), middleware, None)
+                .await
+                .unwrap();
+        assert_eq!(result.len(), 10);
+    }
+
+    #[tokio::test]
+    async fn test_get_pair_addresses_batch_failure() {
+        let SetupResult(factory, middleware) = setup();
+        let result = get_pair_addresses_batch(
+            factory,
+            U256::from(10_000_000),
+            U256::from(10_000_010),
+            middleware,
+            None,
+        )
+        .await;
+
+        assert!(matches!(
+            result,
+            Err(PairsAddressesBatchError {
+                factory: _,
+                start: _,
+                end: _,
+                message: _
+            })
+        ),);
+    }
+
+    #[tokio::test]
+    async fn test_get_pair_addresses_concurrent_success() {
+        let SetupResult(factory, middleware) = setup();
+        let result = get_pair_addresses_concurrent(factory, 0, 10, 1, middleware)
             .await
             .unwrap();
         assert_eq!(result.len(), 10);
     }
 
     #[tokio::test]
-    async fn test_get_pairs_addresses_batch_failure() {
+    async fn test_get_pair_addresses_concurrent_failure() {
         let SetupResult(factory, middleware) = setup();
-        let result = get_pairs_addresses_batch(
-            factory,
-            U256::from(10_000_000),
-            U256::from(10_000_010),
-            middleware,
-        )
-        .await;
-
-        assert!(
-            matches!(
-                result,
-                Err(PairsAddressesBatchError { factory: _, start: _, end: _, message: _ })
-            ),
-            "Expected the call to fail with PairsAddressesBatchError, but it succeeded or failed with a different error"
-        );
+        let result =
+            get_pair_addresses_concurrent(factory, 10_000_000, 10_000_010, 1, middleware).await;
+        assert!(matches!(
+            result,
+            Err(PairsAddressesBatchError {
+                factory: _,
+                start: _,
+                end: _,
+                message: _
+            })
+        ),);
     }
 }
