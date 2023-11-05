@@ -2,10 +2,11 @@ use ethers::abi::{ParamType, Token};
 use ethers::prelude::abigen;
 use ethers::providers::Middleware;
 use ethers::types::{Bytes, H160, U256};
-use futures::future;
 use indicatif::ProgressBar;
 use std::fmt;
 use std::sync::{Arc, Mutex};
+
+use crate::concurrent::run_concurrent;
 
 abigen!(
     IGetUniswapV2PairsBatchRequest,
@@ -93,37 +94,26 @@ async fn get_pair_addresses_batch<M: Middleware>(
     Ok(pairs)
 }
 
-pub async fn get_pair_addresses_concurrent<M: Middleware>(
+pub async fn get_pair_addresses_concurrent<'a, M: Middleware + 'a>(
     factory: H160,
     start: usize,
     end: usize,
     step: usize,
     middleware: Arc<M>,
 ) -> Result<Vec<H160>, PairsAddressesBatchError> {
-    let size = end - start;
-    let pb = ProgressBar::new(size as u64);
-    let shared_pb = Arc::new(Mutex::new(pb));
-    let mut futures: Vec<_> = vec![];
-    for i in (start..end).step_by(step) {
-        futures.push(get_pair_addresses_batch(
+    let batch_func = |start_index: usize,
+                      end_index: usize,
+                      middleware: Arc<M>,
+                      pb: Option<Arc<Mutex<ProgressBar>>>| {
+        get_pair_addresses_batch(
             factory,
-            U256::from(i),
-            U256::from((i + step).min(end)),
+            U256::from(start_index),
+            U256::from(end_index),
             middleware.clone(),
-            Some(shared_pb.clone()),
-        ));
-    }
-    let results = future::join_all(futures).await;
-    let mut pair_addresses = vec![];
-    for result in results {
-        match result {
-            Ok(addresses) => pair_addresses.extend(addresses),
-            Err(err) => {
-                return Err(err);
-            }
-        }
-    }
-    Ok(pair_addresses)
+            pb,
+        )
+    };
+    run_concurrent(start, end, step, middleware, batch_func).await
 }
 
 #[cfg(test)]
