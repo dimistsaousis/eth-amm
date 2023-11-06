@@ -17,7 +17,6 @@ pub const PAIR_CREATED_EVENT_SIGNATURE: H256 = H256([
 impl UniswapV2Factory {
     async fn get_pair_addresses_from_logs<'a, M: Middleware + 'a>(
         &self,
-        factory: H160,
         start: u64,
         end: u64,
         middleware: Arc<M>,
@@ -27,7 +26,7 @@ impl UniswapV2Factory {
             .get_logs(
                 &Filter::new()
                     .topic0(ValueOrArray::Value(PAIR_CREATED_EVENT_SIGNATURE))
-                    .address(factory)
+                    .address(self.address)
                     .from_block(BlockNumber::Number(U64([start as u64])))
                     .to_block(BlockNumber::Number(U64([end as u64]))),
             )
@@ -48,7 +47,6 @@ impl UniswapV2Factory {
 
     pub async fn get_pair_addresses_from_logs_concurrent<'a, M: Middleware + 'a>(
         &self,
-        factory: H160,
         start: u64,
         end: u64,
         step: usize,
@@ -56,7 +54,7 @@ impl UniswapV2Factory {
     ) -> Vec<H160> {
         let batch_func =
             |start: u64, end: u64, middleware: Arc<M>, pb: Option<Arc<Mutex<ProgressBar>>>| {
-                self.get_pair_addresses_from_logs(factory, start, end, middleware.clone(), pb)
+                self.get_pair_addresses_from_logs(start, end, middleware.clone(), pb)
             };
         run_concurrent(start, end, step, middleware, batch_func).await
     }
