@@ -1,4 +1,5 @@
 pub mod contracts;
+pub mod pool_data_batch_request;
 pub mod sync_event;
 use crate::arithmetic::{div_uu, q64_to_f64, U128_0X10000000000000000};
 

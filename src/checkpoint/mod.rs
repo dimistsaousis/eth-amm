@@ -54,7 +54,7 @@ impl Checkpoint<H160> {
                 let pairs = factory
                     .get_pair_addresses_from_factory(
                         0,
-                        factory.all_pairs_length(provider.http.clone()).await,
+                        factory.all_pairs_length(provider.http.clone()).await as usize,
                         step,
                         provider.http.clone(),
                     )
@@ -67,8 +67,8 @@ impl Checkpoint<H160> {
             Some(mut checkpoint) => {
                 let new_pairs = factory
                     .get_pair_addresses_from_logs_concurrent(
-                        checkpoint.last_block,
-                        current_block,
+                        checkpoint.last_block as usize,
+                        current_block as usize,
                         step,
                         provider.http.clone(),
                     )

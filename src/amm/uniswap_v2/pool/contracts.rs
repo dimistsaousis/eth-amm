@@ -15,4 +15,7 @@ abigen!(
         function balanceOf(address account) external view returns (uint256)
         function decimals() external view returns (uint8)
     ]"#;
+
+    IGetUniswapV2PoolDataBatchRequest,
+    "src/contract/abi/GetUniswapV2PoolDataBatchRequestABI.json";
 );

@@ -19,8 +19,8 @@ pub const PAIR_CREATED_EVENT_SIGNATURE: H256 = H256([
 impl UniswapV2Factory {
     async fn get_pair_addresses_from_logs<'a, M: Middleware + 'a>(
         &self,
-        start: u64,
-        end: u64,
+        start: usize,
+        end: usize,
         middleware: Arc<M>,
         progress_bar: Option<Arc<Mutex<ProgressBar>>>,
     ) -> Vec<H160> {
@@ -49,13 +49,13 @@ impl UniswapV2Factory {
 
     pub async fn get_pair_addresses_from_logs_concurrent<'a, M: Middleware + 'a>(
         &self,
-        start: u64,
-        end: u64,
+        start: usize,
+        end: usize,
         step: usize,
         middleware: Arc<M>,
     ) -> Vec<H160> {
         let batch_func =
-            |start: u64, end: u64, middleware: Arc<M>, pb: Option<Arc<Mutex<ProgressBar>>>| {
+            |start: usize, end: usize, middleware: Arc<M>, pb: Option<Arc<Mutex<ProgressBar>>>| {
                 self.get_pair_addresses_from_logs(start, end, middleware.clone(), pb)
             };
         println!(
