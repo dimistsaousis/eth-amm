@@ -1,5 +1,10 @@
-use ethers::types::H160;
+pub mod contracts;
+use std::sync::Arc;
+
+use ethers::{providers::Middleware, types::H160};
 use serde::{Deserialize, Serialize};
+
+use self::contracts::IUniswapV2Pair;
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct UniswapV2Pool {
@@ -35,5 +40,18 @@ impl UniswapV2Pool {
             reserve_1,
             fee,
         }
+    }
+    pub async fn get_reserves<M: Middleware>(&self, middleware: Arc<M>) -> (u128, u128) {
+        let v2_pair = IUniswapV2Pair::new(self.address, middleware);
+        let (reserve_0, reserve_1, _) = v2_pair
+            .get_reserves()
+            .call()
+            .await
+            .expect("Could not get reserves");
+        (reserve_0, reserve_1)
+    }
+
+    pub async fn sync_reserves<M: Middleware>(&mut self, middleware: Arc<M>) {
+        (self.reserve_0, self.reserve_1) = self.get_reserves(middleware).await
     }
 }
