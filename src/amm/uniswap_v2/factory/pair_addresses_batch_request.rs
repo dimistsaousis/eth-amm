@@ -67,6 +67,10 @@ impl UniswapV2Factory {
             |start: u64, end: u64, middleware: Arc<M>, pb: Option<Arc<Mutex<ProgressBar>>>| {
                 self.get_pair_addresses_from_factory_batch(start, end, middleware.clone(), pb)
             };
+        println!(
+            "Getting pair addresses from Uniswap v2 factory {:?}, from {} to {} with step {}",
+            self.address, start, end, step
+        );
         run_concurrent(start, end, step, middleware, batch_func).await
     }
 }
