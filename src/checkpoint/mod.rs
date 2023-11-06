@@ -8,19 +8,24 @@ use crate::{amm::uniswap_v2::factory::UniswapV2Factory, middleware::EthProvider}
 pub struct Checkpoint<T> {
     pub last_block: u64,
     pub data: Vec<T>,
+    pub id: String,
 }
 
 impl<T: for<'a> Deserialize<'a> + Serialize> Checkpoint<T> {
-    pub fn new(last_block: u64, data: Vec<T>) -> Self {
-        Checkpoint { last_block, data }
+    pub fn new(last_block: u64, data: Vec<T>, id: &str) -> Self {
+        Checkpoint {
+            last_block,
+            data,
+            id: id.to_string(),
+        }
     }
 
-    fn path(loc: &str) -> String {
-        format!("src/checkpoint/data/{}", loc)
+    fn path(id: &str) -> String {
+        format!("src/checkpoint/data/{}", id)
     }
 
-    pub fn load_data(loc: &str) -> Option<Self> {
-        match fs::read_to_string(Self::path(loc))
+    pub fn load_data(id: &str) -> Option<Self> {
+        match fs::read_to_string(Self::path(&id))
             .map_err(|e| e.to_string())
             .and_then(|data| serde_json::from_str(&data).map_err(|e| e.to_string()))
         {
@@ -29,22 +34,23 @@ impl<T: for<'a> Deserialize<'a> + Serialize> Checkpoint<T> {
         }
     }
 
-    pub fn save_data(&self, loc: &str) {
+    pub fn save_data(&self) {
         let serialized = serde_json::to_string(self).unwrap();
-        fs::write(Self::path(loc), serialized).unwrap();
+        fs::write(Self::path(&self.id), serialized).unwrap();
     }
 }
 
 impl Checkpoint<H160> {
     pub async fn sync_uniswap_v2_pair_addresses(
-        provider: EthProvider,
+        provider: &EthProvider,
         factory: UniswapV2Factory,
+        step: usize,
     ) -> Checkpoint<H160> {
-        let checkpoint = Checkpoint::<H160>::load_data("uniswap_v2_pair_addresses");
-        let step = 100;
-        let mut checkpoint = match checkpoint {
+        let id = format!("uniswap_v2_pair_addresses.{:?}", factory.address);
+        let current_block = provider.get_block_number().await;
+        match Self::load_data(&id) {
+            // Get all pairs from factory if no checkpoint
             None => {
-                let block_number = provider.get_block_number().await;
                 let pairs = factory
                     .get_pair_addresses_from_factory(
                         0,
@@ -53,23 +59,24 @@ impl Checkpoint<H160> {
                         provider.http.clone(),
                     )
                     .await;
-                let checkpoint = Checkpoint::<H160>::new(block_number, pairs);
-                checkpoint.save_data("uniswap_v2_pair_addresses");
+                let checkpoint = Self::new(current_block, pairs, &id);
                 checkpoint
             }
-            Some(checkpoint) => checkpoint,
-        };
-        let block_number = provider.get_block_number().await;
-        let new_pairs = factory
-            .get_pair_addresses_from_logs_concurrent(
-                checkpoint.last_block,
-                block_number,
-                step,
-                provider.http.clone(),
-            )
-            .await;
-        checkpoint.data.extend(new_pairs);
-        checkpoint.last_block = block_number;
-        checkpoint
+
+            // Continue from last synced block and get the rest from the logs
+            Some(mut checkpoint) => {
+                let new_pairs = factory
+                    .get_pair_addresses_from_logs_concurrent(
+                        checkpoint.last_block,
+                        current_block,
+                        step,
+                        provider.http.clone(),
+                    )
+                    .await;
+                checkpoint.data.extend(new_pairs);
+                checkpoint.last_block = current_block;
+                checkpoint
+            }
+        }
     }
 }
