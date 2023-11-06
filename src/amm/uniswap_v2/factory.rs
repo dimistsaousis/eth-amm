@@ -8,6 +8,11 @@ use std::sync::{Arc, Mutex};
 
 use crate::concurrent::run_concurrent;
 
+pub const PAIR_CREATED_EVENT_SIGNATURE: H256 = H256([
+    13, 54, 72, 189, 15, 107, 168, 1, 52, 163, 59, 169, 39, 90, 197, 133, 217, 211, 21, 240, 173,
+    131, 85, 205, 222, 253, 227, 26, 250, 40, 208, 233,
+]);
+
 abigen!(
     IGetUniswapV2PairsBatchRequest,
         "src/contract/abi/GetUniswapV2PairsBatchRequestABI.json";
@@ -58,12 +63,7 @@ impl fmt::Display for PairsAddressesLogsError {
     }
 }
 
-pub const PAIR_CREATED_EVENT_SIGNATURE: H256 = H256([
-    13, 54, 72, 189, 15, 107, 168, 1, 52, 163, 59, 169, 39, 90, 197, 133, 217, 211, 21, 240, 173,
-    131, 85, 205, 222, 253, 227, 26, 250, 40, 208, 233,
-]);
-
-async fn get_pair_addresses_from_factory_batch<M: Middleware>(
+async fn _get_pair_addresses_from_factory_batch<M: Middleware>(
     factory: H160,
     start: u64,
     end: u64,
@@ -126,7 +126,7 @@ async fn get_pair_addresses_from_factory_batch<M: Middleware>(
     Ok(pairs)
 }
 
-pub async fn get_pair_addresses_from_factory_concurrent<'a, M: Middleware + 'a>(
+pub async fn get_pair_addresses_from_factory<'a, M: Middleware + 'a>(
     factory: H160,
     start: u64,
     end: u64,
@@ -135,12 +135,12 @@ pub async fn get_pair_addresses_from_factory_concurrent<'a, M: Middleware + 'a>(
 ) -> Result<Vec<H160>, PairsAddressesBatchError> {
     let batch_func =
         |start: u64, end: u64, middleware: Arc<M>, pb: Option<Arc<Mutex<ProgressBar>>>| {
-            get_pair_addresses_from_factory_batch(factory, start, end, middleware.clone(), pb)
+            _get_pair_addresses_from_factory_batch(factory, start, end, middleware.clone(), pb)
         };
     run_concurrent(start, end, step, middleware, batch_func).await
 }
 
-async fn get_pair_addresses_from_logs<'a, M: Middleware + 'a>(
+async fn _get_pair_addresses_from_logs<'a, M: Middleware + 'a>(
     factory: H160,
     start: u64,
     end: u64,
@@ -183,7 +183,7 @@ async fn get_pair_addresses_from_logs<'a, M: Middleware + 'a>(
     Ok(addresses)
 }
 
-pub async fn get_pair_addresses_from_logs_concurrent<'a, M: Middleware + 'a>(
+pub async fn get_pair_addresses_from_logs<'a, M: Middleware + 'a>(
     factory: H160,
     start: u64,
     end: u64,
@@ -192,7 +192,7 @@ pub async fn get_pair_addresses_from_logs_concurrent<'a, M: Middleware + 'a>(
 ) -> Result<Vec<H160>, PairsAddressesLogsError> {
     let batch_func =
         |start: u64, end: u64, middleware: Arc<M>, pb: Option<Arc<Mutex<ProgressBar>>>| {
-            get_pair_addresses_from_logs(factory, start, end, middleware.clone(), pb)
+            _get_pair_addresses_from_logs(factory, start, end, middleware.clone(), pb)
         };
     run_concurrent(start, end, step, middleware, batch_func).await
 }
@@ -218,7 +218,7 @@ mod tests {
     #[tokio::test]
     async fn test_get_pair_addresses_from_factory_batch_success() {
         let SetupResult(factory, middleware) = setup();
-        let result = get_pair_addresses_from_factory_batch(factory, 0, 10, middleware, None)
+        let result = _get_pair_addresses_from_factory_batch(factory, 0, 10, middleware, None)
             .await
             .unwrap();
         assert_eq!(result.len(), 10);
@@ -227,7 +227,7 @@ mod tests {
     #[tokio::test]
     async fn test_get_pair_addresses_from_factory_batch_failure() {
         let SetupResult(factory, middleware) = setup();
-        let result = get_pair_addresses_from_factory_batch(
+        let result = _get_pair_addresses_from_factory_batch(
             factory, 10_000_000, 10_000_010, middleware, None,
         )
         .await;
@@ -246,7 +246,7 @@ mod tests {
     #[tokio::test]
     async fn test_get_pair_addresses_from_factory_concurrent_success() {
         let SetupResult(factory, middleware) = setup();
-        let result = get_pair_addresses_from_factory_concurrent(factory, 0, 10, 1, middleware)
+        let result = get_pair_addresses_from_factory(factory, 0, 10, 1, middleware)
             .await
             .unwrap();
         assert_eq!(result.len(), 10);
@@ -255,10 +255,8 @@ mod tests {
     #[tokio::test]
     async fn test_get_pair_addresses_from_factory_concurrent_failure() {
         let SetupResult(factory, middleware) = setup();
-        let result = get_pair_addresses_from_factory_concurrent(
-            factory, 10_000_000, 10_000_010, 1, middleware,
-        )
-        .await;
+        let result =
+            get_pair_addresses_from_factory(factory, 10_000_000, 10_000_010, 1, middleware).await;
         assert!(matches!(
             result,
             Err(PairsAddressesBatchError {
@@ -271,21 +269,20 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_get_pair_addresses_from_logs_success() {
+    async fn _test_get_pair_addresses_from_logs_success() {
         let SetupResult(factory, middleware) = setup();
-        let result = get_pair_addresses_from_logs(factory, 10008355, 10009355, middleware, None)
+        let result = _get_pair_addresses_from_logs(factory, 10008355, 10009355, middleware, None)
             .await
             .unwrap();
         assert_eq!(result.len(), 2);
     }
 
     #[tokio::test]
-    async fn test_get_pair_addresses_from_logs_concurrent_success() {
+    async fn test_get_pair_addresses_from_logs_success() {
         let SetupResult(factory, middleware) = setup();
-        let result =
-            get_pair_addresses_from_logs_concurrent(factory, 10008355, 10009355, 100, middleware)
-                .await
-                .unwrap();
+        let result = get_pair_addresses_from_logs(factory, 10008355, 10009355, 100, middleware)
+            .await
+            .unwrap();
         assert_eq!(result.len(), 2);
     }
 }
