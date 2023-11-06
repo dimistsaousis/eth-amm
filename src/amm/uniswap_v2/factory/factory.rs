@@ -1,3 +1,5 @@
+use crate::checkpoint::Checkpoint;
+use crate::concurrent::run_concurrent;
 use ethers::abi::{ParamType, RawLog, Token};
 use ethers::prelude::{abigen, EthEvent};
 use ethers::providers::Middleware;
@@ -5,8 +7,6 @@ use ethers::types::{BlockNumber, Bytes, Filter, ValueOrArray, H160, H256, U256, 
 use indicatif::ProgressBar;
 use std::fmt;
 use std::sync::{Arc, Mutex};
-
-use crate::concurrent::run_concurrent;
 
 pub const PAIR_CREATED_EVENT_SIGNATURE: H256 = H256([
     13, 54, 72, 189, 15, 107, 168, 1, 52, 163, 59, 169, 39, 90, 197, 133, 217, 211, 21, 240, 173,
@@ -138,6 +138,20 @@ pub async fn get_pair_addresses_from_factory<'a, M: Middleware + 'a>(
             _get_pair_addresses_from_factory_batch(factory, start, end, middleware.clone(), pb)
         };
     run_concurrent(start, end, step, middleware, batch_func).await
+}
+
+pub async fn get_all_pair_addresses_from_factory<'a, M: Middleware + 'a>(
+    factory: H160,
+    step: usize,
+    middleware: Arc<M>,
+) -> Result<Vec<H160>, PairsAddressesBatchError> {
+    let factory_contract = IUniswapV2Factory::new(factory, middleware.clone());
+    let number_of_pairs = factory_contract
+        .all_pairs_length()
+        .call()
+        .await
+        .expect("Could not get pairs length from the factory contract");
+    get_pair_addresses_from_factory(factory, 0, number_of_pairs.as_u64(), step, middleware).await
 }
 
 async fn _get_pair_addresses_from_logs<'a, M: Middleware + 'a>(
