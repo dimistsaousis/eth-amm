@@ -2,10 +2,12 @@ use super::{contracts::PairCreatedFilter, UniswapV2Factory};
 use crate::concurrent::run_concurrent;
 use ethers::abi::RawLog;
 use ethers::prelude::EthEvent;
+use ethers::providers::{Provider, Ws};
 use ethers::{
     providers::Middleware,
     types::{BlockNumber, Filter, ValueOrArray, H160, H256, U64},
 };
+use futures::StreamExt;
 use indicatif::ProgressBar;
 use std::sync::{Arc, Mutex};
 
@@ -57,5 +59,22 @@ impl UniswapV2Factory {
                 self.get_pair_addresses_from_logs(start, end, middleware.clone(), pb)
             };
         run_concurrent(start, end, step, middleware, batch_func).await
+    }
+
+    pub async fn subscribe_pair_created_event<F>(wss: Arc<Provider<Ws>>, func: F)
+    where
+        F: Fn(H160, PairCreatedFilter) -> (),
+    {
+        let filter = Filter::new().topic0(ValueOrArray::Value(PAIR_CREATED_EVENT_SIGNATURE));
+        let mut stream = wss
+            .subscribe_logs(&filter)
+            .await
+            .expect("Could not subscribe to new pairs stream");
+        while let Some(log) = stream.next().await {
+            let pair_created_event: PairCreatedFilter =
+                PairCreatedFilter::decode_log(&RawLog::from(log.clone()))
+                    .expect("Failed to decode data");
+            func(log.address, pair_created_event);
+        }
     }
 }
