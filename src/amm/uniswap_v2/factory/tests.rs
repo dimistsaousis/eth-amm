@@ -41,3 +41,10 @@ async fn test_get_pair_addresses_from_logs_success() {
         .await;
     assert_eq!(result.len(), 2);
 }
+
+#[tokio::test]
+async fn test_all_pairs_length() {
+    let SetupResult(factory, middleware) = setup();
+    let result = factory.all_pairs_length(middleware).await;
+    assert!(result > 279_174, "Result: {}", result);
+}
