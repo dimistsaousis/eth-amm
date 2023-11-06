@@ -1,4 +1,17 @@
+use std::str::FromStr;
+
+use eth_amm::{
+    amm::uniswap_v2::factory::UniswapV2Factory, checkpoint::Checkpoint, middleware::EthProvider,
+};
+use ethers::types::H160;
+
 #[tokio::main]
 async fn main() {
-    println!("Hello world");
+    dotenv::dotenv().ok();
+    let provider = EthProvider::new().await;
+    let factory_address = H160::from_str("0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f").unwrap();
+    let factory: UniswapV2Factory = UniswapV2Factory::new(factory_address);
+    let checkpoint =
+        Checkpoint::<H160>::sync_uniswap_v2_pair_addresses(&provider, factory, 100).await;
+    checkpoint.save_data();
 }
