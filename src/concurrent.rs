@@ -4,18 +4,17 @@ use indicatif::ProgressBar;
 use std::future::Future;
 use std::sync::{Arc, Mutex};
 
-pub async fn run_concurrent<'a, F, Fut, V, E, M>(
+pub async fn run_concurrent<'a, F, Fut, V, M>(
     start: u64,
     end: u64,
     step: usize,
     middleware: Arc<M>,
     func: F,
-) -> Result<Vec<V>, E>
+) -> Vec<V>
 where
     F: Fn(u64, u64, Arc<M>, Option<Arc<Mutex<ProgressBar>>>) -> Fut,
-    Fut: Future<Output = Result<Vec<V>, E>> + Send + 'a,
+    Fut: Future<Output = Vec<V>> + Send + 'a,
     V: Send + 'a,
-    E: Send + 'a,
     M: Middleware + 'a,
 {
     let size = end - start;
@@ -31,13 +30,9 @@ where
             Some(shared_pb.clone()),
         ));
     }
-    let results = future::join_all(futures).await;
-    let mut unwrapped_results = Vec::new();
-    for result in results {
-        match result {
-            Ok(res) => unwrapped_results.extend(res),
-            Err(err) => return Err(err),
-        }
-    }
-    Ok(unwrapped_results)
+    future::join_all(futures)
+        .await
+        .into_iter()
+        .flatten()
+        .collect()
 }
