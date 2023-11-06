@@ -1,15 +1,14 @@
-use ethers::types::H160;
 use serde::{Deserialize, Serialize};
 use std::fs;
 
 #[derive(Serialize, Deserialize)]
-pub struct Checkpoint {
+pub struct Checkpoint<T> {
     pub last_block: u64,
-    pub data: Vec<H160>,
+    pub data: T,
 }
 
-impl Checkpoint {
-    pub fn new(last_block: u64, data: Vec<H160>) -> Self {
+impl<T: for<'a> Deserialize<'a> + Serialize> Checkpoint<T> {
+    pub fn new(last_block: u64, data: T) -> Self {
         Checkpoint { last_block, data }
     }
 
