@@ -73,7 +73,7 @@ impl UniswapV2Factory {
         while let Some(log) = stream.next().await {
             let pair_created_event: PairCreatedFilter =
                 PairCreatedFilter::decode_log(&RawLog::from(log.clone()))
-                    .expect("Failed to decode data");
+                    .expect("Failed to decode PairCreatedFilter data");
             func(log.address, pair_created_event);
         }
     }
