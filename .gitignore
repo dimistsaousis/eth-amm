@@ -2,4 +2,4 @@
 .env
 Cargo.lock
 .vscode
-./checkpoint_data
+/src/checkpoint/data/
