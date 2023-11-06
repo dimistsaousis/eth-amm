@@ -10,6 +10,9 @@ pub struct UniswapV2Factory {
 }
 
 impl UniswapV2Factory {
+    pub fn new(address: H160) -> Self {
+        UniswapV2Factory { address }
+    }
     pub fn contract<M: Middleware>(&self, middleware: Arc<M>) -> IUniswapV2Factory<M> {
         IUniswapV2Factory::new(self.address, middleware)
     }
