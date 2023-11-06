@@ -1,4 +1,5 @@
 pub mod contracts;
+mod pair_addresses_batch_request;
 pub mod pair_created_event;
 use self::contracts::IUniswapV2Factory;
 use ethers::{providers::Middleware, types::H160};
@@ -28,3 +29,6 @@ impl UniswapV2Factory {
             .as_u64()
     }
 }
+
+#[cfg(test)]
+mod tests;
