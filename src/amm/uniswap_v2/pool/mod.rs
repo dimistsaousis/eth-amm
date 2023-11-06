@@ -2,7 +2,7 @@ pub mod contracts;
 pub mod sync_event;
 use crate::arithmetic::{div_uu, q64_to_f64, U128_0X10000000000000000};
 
-use self::contracts::IUniswapV2Pair;
+use self::contracts::{IErc20, IUniswapV2Pair};
 use ethers::{
     providers::Middleware,
     types::{H160, U256},
@@ -137,5 +137,21 @@ impl UniswapV2Pool {
         } else {
             self.token_a
         }
+    }
+
+    pub async fn get_token_decimals<M: Middleware>(&mut self, middleware: Arc<M>) -> (u8, u8) {
+        let token_a_decimals = IErc20::new(self.token_a, middleware.clone())
+            .decimals()
+            .call()
+            .await
+            .unwrap();
+
+        let token_b_decimals = IErc20::new(self.token_b, middleware)
+            .decimals()
+            .call()
+            .await
+            .unwrap();
+
+        (token_a_decimals, token_b_decimals)
     }
 }
