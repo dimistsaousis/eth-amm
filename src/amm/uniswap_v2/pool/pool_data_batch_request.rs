@@ -72,7 +72,7 @@ pub async fn get_amm_data_batch_request<M: Middleware>(
     pools
 }
 
-pub async fn get_amm_data_concurrent<M: Middleware>(
+pub async fn get_uniswap_v2_pool_data_concurrent<M: Middleware>(
     addresses: &Vec<H160>,
     middleware: Arc<M>,
     fee: u32,
