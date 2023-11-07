@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use eth_amm::{
-    amm::{uniswap_v2::factory::UniswapV2Factory, UniswapV2Pool},
+    amm::uniswap_v2::{factory::UniswapV2Factory, pool::UniswapV2Pool},
     checkpoint::Checkpoint,
     middleware::EthProvider,
 };

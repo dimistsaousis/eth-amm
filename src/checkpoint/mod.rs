@@ -3,12 +3,9 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 
 use crate::{
-    amm::{
-        uniswap_v2::{
-            factory::UniswapV2Factory,
-            pool::pool_data_batch_request::get_uniswap_v2_pool_data_concurrent,
-        },
-        UniswapV2Pool,
+    amm::uniswap_v2::{
+        factory::UniswapV2Factory,
+        pool::{pool_data_batch_request::get_uniswap_v2_pool_data_concurrent, UniswapV2Pool},
     },
     middleware::EthProvider,
 };
@@ -130,7 +127,7 @@ impl Checkpoint<UniswapV2Pool> {
                     &new_pairs,
                     provider.http.clone(),
                     300,
-                    step,
+                    new_pairs.len().div_ceil(10).max(step),
                 )
                 .await;
                 checkpoint.data.extend(new_pools);

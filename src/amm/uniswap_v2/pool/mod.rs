@@ -1,9 +1,11 @@
 pub mod contracts;
 pub mod pool_data_batch_request;
 pub mod sync_event;
+use self::{
+    contracts::{IErc20, IUniswapV2Pair},
+    pool_data_batch_request::get_uniswap_v2_pool_data_concurrent,
+};
 use crate::arithmetic::{div_uu, q64_to_f64, U128_0X10000000000000000};
-
-use self::contracts::{IErc20, IUniswapV2Pair};
 use ethers::{
     providers::Middleware,
     types::{H160, U256},
@@ -46,6 +48,12 @@ impl UniswapV2Pool {
             fee,
         }
     }
+
+    pub async fn from_address<M: Middleware>(middleware: Arc<M>, address: H160, fee: u32) -> Self {
+        let pool = get_uniswap_v2_pool_data_concurrent(&vec![address], middleware, fee, 1).await;
+        pool.into_iter().next().unwrap()
+    }
+
     pub async fn get_reserves<M: Middleware>(&self, middleware: Arc<M>) -> (u128, u128) {
         let v2_pair = IUniswapV2Pair::new(self.address, middleware);
         let (reserve_0, reserve_1, _) = v2_pair
@@ -156,3 +164,6 @@ impl UniswapV2Pool {
         (token_a_decimals, token_b_decimals)
     }
 }
+
+#[cfg(test)]
+mod tests;

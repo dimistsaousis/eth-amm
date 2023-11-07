@@ -1,15 +1,12 @@
-use std::sync::{Arc, Mutex};
-
+use super::{contracts::IGetUniswapV2PoolDataBatchRequest, UniswapV2Pool};
+use crate::concurrent::run_concurrent;
 use ethers::{
     abi::{ParamType, Token},
     providers::Middleware,
     types::{Bytes, H160},
 };
 use indicatif::ProgressBar;
-
-use crate::{amm::UniswapV2Pool, concurrent::run_concurrent};
-
-use super::contracts::IGetUniswapV2PoolDataBatchRequest;
+use std::sync::{Arc, Mutex};
 
 pub async fn get_amm_data_batch_request<M: Middleware>(
     addresses: &[H160],
