@@ -163,6 +163,15 @@ impl UniswapV2Pool {
 
         (token_a_decimals, token_b_decimals)
     }
+
+    pub fn get_reserve_for_token(&self, token: H160) -> u128 {
+        if self.token_a == token {
+            return self.reserve_0;
+        } else if self.token_b == token {
+            return self.reserve_1;
+        }
+        0
+    }
 }
 
 #[cfg(test)]
