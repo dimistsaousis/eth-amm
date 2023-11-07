@@ -32,6 +32,25 @@ impl UniswapV2Factory {
             )
             .as_u64()
     }
+
+    pub async fn get_pair_address<M: Middleware>(
+        &self,
+        middleware: Arc<M>,
+        token_a: H160,
+        token_b: H160,
+    ) -> H160 {
+        self.contract(middleware)
+            .get_pair(token_a, token_b)
+            .call()
+            .await
+            .expect(
+                format!(
+                    "Could not get pair address for tokens {:?}, {:?}",
+                    token_a, token_b
+                )
+                .as_str(),
+            )
+    }
 }
 
 #[cfg(test)]
