@@ -6,6 +6,18 @@ use std::future::Future;
 use std::hash::Hash;
 use std::sync::{Arc, Mutex};
 
+#[derive(Debug)]
+pub struct BatchError {
+    pub start: usize,
+    pub end: usize,
+}
+
+impl BatchError {
+    pub fn new(start: usize, end: usize) -> Self {
+        BatchError { start, end }
+    }
+}
+
 pub async fn run_concurrent<'a, F, Fut, V, M>(
     start: usize,
     end: usize,
@@ -48,7 +60,7 @@ pub async fn run_concurrent_hash<'a, F, Fut, K, V, M>(
 ) -> HashMap<K, V>
 where
     F: Fn(usize, usize, Arc<M>, Option<Arc<Mutex<ProgressBar>>>) -> Fut,
-    Fut: Future<Output = HashMap<K, V>> + Send + 'a,
+    Fut: Future<Output = Result<HashMap<K, V>, BatchError>> + Send + 'a,
     K: Eq + Hash + Send + 'a,
     V: Send + 'a,
     M: Middleware + 'a,
@@ -67,11 +79,24 @@ where
         ));
     }
 
-    let mut result = HashMap::new(); // 'mut' keyword added
-    future::join_all(futures).await.into_iter().for_each(|map| {
-        map.into_iter().for_each(|(k, v)| {
-            result.insert(k, v);
-        });
-    });
-    result
+    let results = future::join_all(futures).await;
+    let mut combined_results = HashMap::new();
+
+    for result in results {
+        match result {
+            Ok(data) => data.into_iter().for_each(|(k, v)| {
+                combined_results.insert(k, v);
+            }),
+            Err(err) => {
+                for idx in err.start..err.end {
+                    let res = func(idx, idx, middleware.clone(), Some(shared_pb.clone())).await;
+                    if let Ok(res) = res {
+                        let (k, v) = res.into_iter().next().unwrap();
+                        combined_results.insert(k, v);
+                    }
+                }
+            }
+        }
+    }
+    combined_results
 }
