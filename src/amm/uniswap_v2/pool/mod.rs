@@ -1,6 +1,6 @@
 pub mod contracts;
+pub mod events;
 pub mod pool_data_batch_request;
-pub mod sync_event;
 use self::{
     contracts::{IErc20, IUniswapV2Pair},
     pool_data_batch_request::get_uniswap_v2_pool_data_concurrent,
