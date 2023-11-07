@@ -99,8 +99,9 @@ pub async fn get_weth_value_in_pool_concurrent<M: Middleware>(
             )
         };
     println!(
-        "Getting ETH equivalent values for {} pools",
-        pool_addresses.len()
+        "Getting ETH equivalent values for {} pools with value at least {:?} GWEI",
+        pool_addresses.len(),
+        weth_threshold
     );
     run_concurrent_hash(0, pool_addresses.len(), step, middleware, batch_func).await
 }
