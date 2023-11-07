@@ -2,7 +2,16 @@ use ethers::types::H160;
 use serde::{Deserialize, Serialize};
 use std::fs;
 
-use crate::{amm::uniswap_v2::factory::UniswapV2Factory, middleware::EthProvider};
+use crate::{
+    amm::{
+        uniswap_v2::{
+            factory::UniswapV2Factory,
+            pool::pool_data_batch_request::get_uniswap_v2_pool_data_concurrent,
+        },
+        UniswapV2Pool,
+    },
+    middleware::EthProvider,
+};
 
 #[derive(Serialize, Deserialize)]
 pub struct Checkpoint<T> {
@@ -74,6 +83,55 @@ impl Checkpoint<H160> {
                     )
                     .await;
                 checkpoint.data.extend(new_pairs);
+                checkpoint.last_block = current_block;
+                checkpoint
+            }
+        }
+    }
+}
+
+impl Checkpoint<UniswapV2Pool> {
+    pub async fn sync_uniswap_v2_pools(
+        provider: &EthProvider,
+        factory: UniswapV2Factory,
+        step: usize,
+    ) -> Checkpoint<UniswapV2Pool> {
+        let id = format!("uniswap_v2_pools.{:?}", factory.address);
+        let current_block = provider.get_block_number().await;
+        match Self::load_data(&id) {
+            // Get all pairs from factory if no checkpoint
+            None => {
+                let pairs =
+                    Checkpoint::<H160>::sync_uniswap_v2_pair_addresses(provider, factory, step)
+                        .await;
+                let pools = get_uniswap_v2_pool_data_concurrent(
+                    &pairs.data,
+                    provider.http.clone(),
+                    300,
+                    step,
+                )
+                .await;
+                Self::new(current_block, pools, &id)
+            }
+
+            // Continue from last synced block and get the rest from the logs
+            Some(mut checkpoint) => {
+                let new_pairs = factory
+                    .get_pair_addresses_from_logs_concurrent(
+                        checkpoint.last_block as usize,
+                        current_block as usize,
+                        step,
+                        provider.http.clone(),
+                    )
+                    .await;
+                let new_pools = get_uniswap_v2_pool_data_concurrent(
+                    &new_pairs,
+                    provider.http.clone(),
+                    300,
+                    step,
+                )
+                .await;
+                checkpoint.data.extend(new_pools);
                 checkpoint.last_block = current_block;
                 checkpoint
             }
