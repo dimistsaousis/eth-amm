@@ -1,13 +1,11 @@
-use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
-
+use crate::concurrent::{run_concurrent_hash, BatchError};
 use ethers::abi::{ParamType, Token};
 use ethers::prelude::abigen;
 use ethers::types::{Bytes, U256};
 use ethers::{providers::Middleware, types::H160};
 use indicatif::ProgressBar;
-
-use crate::concurrent::run_concurrent_hash;
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 
 abigen!(
     GetWethValueInAMMBatchRequest,
@@ -21,7 +19,9 @@ async fn get_weth_value_in_pool_batch_request<M: Middleware>(
     weth_threshold: U256,
     middleware: Arc<M>,
     progress_bar: Option<Arc<Mutex<ProgressBar>>>,
-) -> HashMap<H160, U256> {
+    start: usize,
+    end: usize,
+) -> Result<HashMap<H160, U256>, BatchError> {
     let pools = pool_addresses
         .iter()
         .map(|a| Token::Address(*a))
@@ -46,17 +46,18 @@ async fn get_weth_value_in_pool_batch_request<M: Middleware>(
     ]);
 
     let deployer = GetWethValueInAMMBatchRequest::deploy(middleware, constructor_args)
-        .expect("Error while deploying GetWethValueInAMMBatchRequest");
+        .map_err(|_| BatchError::new(start, end))?;
+
     let return_data: Bytes = deployer
         .call_raw()
         .await
-        .expect("Error while calling GetWethValueInAMMBatchRequest");
+        .map_err(|_| BatchError::new(start, end))?;
 
     let return_data_tokens = ethers::abi::decode(
         &[ParamType::Array(Box::new(ParamType::Uint(256)))],
         &return_data,
     )
-    .expect("Error while getting return data for GetWethValueInAMMBatchRequest");
+    .map_err(|_| BatchError::new(start, end))?;
 
     let mut weth_values: HashMap<H160, U256> = HashMap::new();
 
@@ -73,9 +74,9 @@ async fn get_weth_value_in_pool_batch_request<M: Middleware>(
     if let Some(pb) = progress_bar {
         pb.lock().unwrap().inc(pool_addresses.len() as u64);
     }
-    weth_values
-}
 
+    Ok(weth_values)
+}
 pub async fn get_weth_value_in_pool_concurrent<M: Middleware>(
     pool_addresses: &[H160],
     factory_addresses: &[H160],
@@ -93,8 +94,14 @@ pub async fn get_weth_value_in_pool_concurrent<M: Middleware>(
                 weth_threshold,
                 middleware.clone(),
                 pb,
+                start,
+                end,
             )
         };
+    println!(
+        "Getting ETH equivalent values for {} pools",
+        pool_addresses.len()
+    );
     run_concurrent_hash(0, pool_addresses.len(), step, middleware, batch_func).await
 }
 
