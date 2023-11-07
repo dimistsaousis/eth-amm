@@ -1,6 +1,6 @@
 pub mod contracts;
+pub mod events;
 mod pair_addresses_batch_request;
-pub mod pair_created_event;
 use self::contracts::IUniswapV2Factory;
 use ethers::{providers::Middleware, types::H160};
 use std::sync::Arc;

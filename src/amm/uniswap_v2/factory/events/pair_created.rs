@@ -1,4 +1,5 @@
-use super::{contracts::PairCreatedFilter, UniswapV2Factory};
+use crate::amm::uniswap_v2::factory::contracts::PairCreatedFilter;
+use crate::amm::uniswap_v2::factory::UniswapV2Factory;
 use crate::concurrent::run_concurrent;
 use ethers::abi::RawLog;
 use ethers::prelude::EthEvent;
