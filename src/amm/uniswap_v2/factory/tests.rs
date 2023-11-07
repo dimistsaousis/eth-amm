@@ -8,7 +8,7 @@ fn setup() -> SetupResult {
     // Create and return the necessary test
     dotenv::dotenv().ok();
     let address: H160 = H160::from_str("0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f").unwrap();
-    let factory: UniswapV2Factory = UniswapV2Factory { address };
+    let factory: UniswapV2Factory = UniswapV2Factory { address, fee: 300 };
     let rpc_endpoint = std::env::var("NETWORK_RPC").unwrap();
     let middleware = Arc::new(Provider::<Http>::try_from(rpc_endpoint).unwrap());
 
