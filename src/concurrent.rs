@@ -92,8 +92,11 @@ where
                     "Failed to get results from {} to end {} trying with step 1.",
                     err.start, err.end
                 );
-                for idx in err.start..err.end {
-                    let res = func(idx, idx, middleware.clone(), Some(shared_pb.clone())).await;
+                let futures = (err.start..err.end)
+                    .into_iter()
+                    .map(|idx| func(idx, idx, middleware.clone(), Some(shared_pb.clone())));
+                let results = future::join_all(futures).await;
+                for res in results {
                     if let Ok(res) = res {
                         if let Some((k, v)) = res.into_iter().next() {
                             combined_results.insert(k, v);
