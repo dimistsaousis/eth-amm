@@ -82,6 +82,6 @@ pub async fn get_uniswap_v2_pool_data_concurrent<M: Middleware>(
         |start: usize, end: usize, middleware: Arc<M>, pb: Option<Arc<Mutex<ProgressBar>>>| {
             get_amm_data_batch_request(&addresses[start..end], middleware.clone(), fee, pb)
         };
-    println!("Getting amm data");
+    println!("Getting amm data for {} pairs", addresses.len());
     run_concurrent(0, addresses.len(), step, middleware, batch_func).await
 }
