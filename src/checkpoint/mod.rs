@@ -57,7 +57,7 @@ impl Checkpoint<H160> {
     ) -> Checkpoint<H160> {
         let id = format!("uniswap_v2_pair_addresses.{:?}", factory.address);
         let current_block = provider.get_block_number().await;
-        match Self::load_data(&id) {
+        let checkpoint = match Self::load_data(&id) {
             // Get all pairs from factory if no checkpoint
             None => {
                 let pairs = factory
@@ -86,7 +86,9 @@ impl Checkpoint<H160> {
                 checkpoint.last_block = current_block;
                 checkpoint
             }
-        }
+        };
+        checkpoint.save_data();
+        checkpoint
     }
 }
 
@@ -98,7 +100,7 @@ impl Checkpoint<UniswapV2Pool> {
     ) -> Checkpoint<UniswapV2Pool> {
         let id = format!("uniswap_v2_pools.{:?}", factory.address);
         let current_block = provider.get_block_number().await;
-        match Self::load_data(&id) {
+        let checkpoint = match Self::load_data(&id) {
             // Get all pairs from factory if no checkpoint
             None => {
                 let pairs =
@@ -135,6 +137,8 @@ impl Checkpoint<UniswapV2Pool> {
                 checkpoint.last_block = current_block;
                 checkpoint
             }
-        }
+        };
+        checkpoint.save_data();
+        checkpoint
     }
 }
