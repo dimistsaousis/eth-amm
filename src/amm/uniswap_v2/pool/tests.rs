@@ -74,3 +74,10 @@ async fn test_get_uniswap_v2_pool_data_concurrent() {
     assert_eq!(pool.token_a_decimals, new_pool.token_a_decimals);
     assert_eq!(pool.token_b_decimals, new_pool.token_b_decimals);
 }
+
+#[tokio::test]
+async fn test_factory() {
+    let SetupResult(pool, middleware) = setup().await;
+    let address: H160 = H160::from_str("0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f").unwrap();
+    assert_eq!(pool.factory(middleware).await, address);
+}

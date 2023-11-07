@@ -49,6 +49,21 @@ impl UniswapV2Pool {
         }
     }
 
+    pub fn contract<M: Middleware>(&self, middleware: Arc<M>) -> IUniswapV2Pair<M> {
+        IUniswapV2Pair::new(self.address, middleware)
+    }
+
+    pub async fn factory<M: Middleware>(&self, middleware: Arc<M>) -> H160 {
+        self.contract(middleware)
+            .factory()
+            .call()
+            .await
+            .expect(&format!(
+                "Could not get factory for pair {:?}",
+                self.address
+            ))
+    }
+
     pub async fn from_address<M: Middleware>(middleware: Arc<M>, address: H160, fee: u32) -> Self {
         let pool = get_uniswap_v2_pool_data_concurrent(&vec![address], middleware, fee, 1).await;
         pool.into_iter().next().unwrap()
