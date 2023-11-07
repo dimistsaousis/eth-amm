@@ -90,13 +90,14 @@ where
             Err(err) => {
                 println!(
                     "Failed to get results from {} to end {} trying with step 1.",
-                    start, end
+                    err.start, err.end
                 );
                 for idx in err.start..err.end {
                     let res = func(idx, idx, middleware.clone(), Some(shared_pb.clone())).await;
                     if let Ok(res) = res {
-                        let (k, v) = res.into_iter().next().unwrap();
-                        combined_results.insert(k, v);
+                        if let Some((k, v)) = res.into_iter().next() {
+                            combined_results.insert(k, v);
+                        }
                     }
                 }
             }
