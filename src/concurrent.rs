@@ -88,6 +88,10 @@ where
                 combined_results.insert(k, v);
             }),
             Err(err) => {
+                println!(
+                    "Failed to get results from {} to end {} trying with step 1.",
+                    start, end
+                );
                 for idx in err.start..err.end {
                     let res = func(idx, idx, middleware.clone(), Some(shared_pb.clone())).await;
                     if let Ok(res) = res {
