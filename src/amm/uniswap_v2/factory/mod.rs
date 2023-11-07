@@ -39,7 +39,8 @@ impl UniswapV2Factory {
         token_a: H160,
         token_b: H160,
     ) -> H160 {
-        self.contract(middleware)
+        let address = self
+            .contract(middleware)
             .get_pair(token_a, token_b)
             .call()
             .await
@@ -49,7 +50,11 @@ impl UniswapV2Factory {
                     token_a, token_b
                 )
                 .as_str(),
-            )
+            );
+        if address == H160::zero() {
+            println!("Could not find pair for {:?} and {:?}", token_a, token_b);
+        }
+        address
     }
 }
 
