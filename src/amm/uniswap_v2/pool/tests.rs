@@ -1,32 +1,31 @@
+use crate::middleware::EthProvider;
+
 use super::*;
-use ethers::providers::{Http, Provider};
 use std::str::FromStr;
-struct SetupResult(UniswapV2Pool, Arc<Provider<Http>>);
+struct SetupResult(UniswapV2Pool, EthProvider);
 
 async fn setup() -> SetupResult {
-    // Create and return the necessary test
     dotenv::dotenv().ok();
     let weth_usdc_address: H160 =
         H160::from_str("0xB4e16d0168e52d35CaCD2c6185b44281Ec28C9Dc").unwrap();
-    let rpc_endpoint = std::env::var("NETWORK_RPC").unwrap();
-    let middleware = Arc::new(Provider::<Http>::try_from(rpc_endpoint).unwrap());
-    let pool = UniswapV2Pool::from_address(middleware.clone(), weth_usdc_address, 300).await;
-    SetupResult(pool, middleware)
+    let provider = EthProvider::new().await;
+    let pool = UniswapV2Pool::from_address(provider.http.clone(), weth_usdc_address, 300).await;
+    SetupResult(pool, provider)
 }
 
 #[tokio::test]
 async fn test_get_reserves() {
-    let SetupResult(pool, middleware) = setup().await;
-    let (r0, r1) = pool.get_reserves(middleware).await;
+    let SetupResult(pool, provider) = setup().await;
+    let (r0, r1) = pool.get_reserves(provider.http).await;
     assert_ne!(r0, 0);
     assert_ne!(r1, 0);
 }
 
 #[tokio::test]
 async fn test_sync_reserves() {
-    let SetupResult(mut pool, middleware) = setup().await;
-    let (r0, r1) = pool.get_reserves(middleware.clone()).await;
-    pool.sync_reserves(middleware.clone()).await;
+    let SetupResult(mut pool, provider) = setup().await;
+    let (r0, r1) = pool.get_reserves(provider.http.clone()).await;
+    pool.sync_reserves(provider.http.clone()).await;
     assert_eq!(r0, pool.reserve_0);
     assert_eq!(r1, pool.reserve_1);
 }
@@ -56,17 +55,17 @@ async fn test_simulate_swap() {
 
 #[tokio::test]
 async fn test_get_token_decimals() {
-    let SetupResult(mut pool, middleware) = setup().await;
-    let (t0, t1) = pool.get_token_decimals(middleware).await;
+    let SetupResult(mut pool, provider) = setup().await;
+    let (t0, t1) = pool.get_token_decimals(provider.http).await;
     assert_eq!(t0, 6);
     assert_eq!(t1, 18);
 }
 
 #[tokio::test]
 async fn test_get_uniswap_v2_pool_data_concurrent() {
-    let SetupResult(pool, middleware) = setup().await;
+    let SetupResult(pool, provider) = setup().await;
     let addresses = vec![pool.address];
-    let pools = get_uniswap_v2_pool_data_concurrent(&addresses, middleware, 300, 1).await;
+    let pools = get_uniswap_v2_pool_data_concurrent(&addresses, provider.http, 300, 1).await;
     let new_pool = pools.into_iter().next().unwrap();
     assert_eq!(pool.address, new_pool.address);
     assert_eq!(pool.token_a, new_pool.token_a);
@@ -77,7 +76,26 @@ async fn test_get_uniswap_v2_pool_data_concurrent() {
 
 #[tokio::test]
 async fn test_factory() {
-    let SetupResult(pool, middleware) = setup().await;
+    let SetupResult(pool, provider) = setup().await;
     let address: H160 = H160::from_str("0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f").unwrap();
-    assert_eq!(pool.factory(middleware).await, address);
+    assert_eq!(pool.factory(provider.http).await, address);
+}
+
+#[tokio::test]
+async fn test_sync_events() {
+    let SetupResult(mut pool, provider) = setup().await;
+    pool.sync_reserves(provider.http.clone()).await;
+    let last_block = provider.get_block_number().await;
+    let events = UniswapV2Pool::get_sync_events_from_logs_concurrent(
+        (last_block - 100) as usize,
+        last_block as usize,
+        10,
+        vec![pool.address],
+        provider.http,
+    )
+    .await;
+    assert!(events.contains_key(&pool.address));
+    let event = &events[&pool.address];
+    assert_eq!(event.reserve_0, pool.reserve_0);
+    assert_eq!(event.reserve_1, pool.reserve_1);
 }

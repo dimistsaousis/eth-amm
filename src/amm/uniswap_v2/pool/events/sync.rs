@@ -20,6 +20,7 @@ impl UniswapV2Pool {
     async fn get_sync_events_from_logs<'a, M: Middleware + 'a>(
         start: usize,
         end: usize,
+        addresses: Vec<H160>,
         middleware: Arc<M>,
         progress_bar: Option<Arc<Mutex<ProgressBar>>>,
     ) -> Result<HashMap<H160, SyncFilter>, BatchError> {
@@ -27,6 +28,7 @@ impl UniswapV2Pool {
             .get_logs(
                 &Filter::new()
                     .topic0(ValueOrArray::Value(SYNC_EVENT_SIGNATURE))
+                    .address(addresses)
                     .from_block(BlockNumber::Number(U64([start as u64])))
                     .to_block(BlockNumber::Number(U64([end as u64]))),
             )
@@ -59,12 +61,15 @@ impl UniswapV2Pool {
         start: usize,
         end: usize,
         step: usize,
+        addresses: Vec<H160>,
         middleware: Arc<M>,
     ) -> HashMap<H160, SyncFilter> {
-        let batch_func =
-            |start: usize, end: usize, middleware: Arc<M>, pb: Option<Arc<Mutex<ProgressBar>>>| {
-                Self::get_sync_events_from_logs(start, end, middleware.clone(), pb)
-            };
+        let batch_func = |start: usize,
+                          end: usize,
+                          middleware: Arc<M>,
+                          pb: Option<Arc<Mutex<ProgressBar>>>| {
+            Self::get_sync_events_from_logs(start, end, addresses.clone(), middleware.clone(), pb)
+        };
         println!(
             "Getting sync events from logs for Uniswap v2 factory, from block {} to {} with step {}",
             start, end, step
