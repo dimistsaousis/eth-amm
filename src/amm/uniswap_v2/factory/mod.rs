@@ -7,11 +7,12 @@ use std::sync::Arc;
 
 pub struct UniswapV2Factory {
     pub address: H160,
+    pub fee: u64,
 }
 
 impl UniswapV2Factory {
-    pub fn new(address: H160) -> Self {
-        UniswapV2Factory { address }
+    pub fn new(address: H160, fee: u64) -> Self {
+        UniswapV2Factory { address, fee }
     }
     pub fn contract<M: Middleware>(&self, middleware: Arc<M>) -> IUniswapV2Factory<M> {
         IUniswapV2Factory::new(self.address, middleware)
