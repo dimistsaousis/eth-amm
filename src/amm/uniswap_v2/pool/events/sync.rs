@@ -1,12 +1,14 @@
 use crate::amm::uniswap_v2::pool::{contracts::SyncFilter, UniswapV2Pool};
 use crate::concurrent::{run_concurrent_hash, BatchError};
 use ethers::prelude::EthEvent;
+use ethers::providers::{Provider, Ws};
 use ethers::types::{H160, U256};
 use ethers::{
     abi::RawLog,
     providers::Middleware,
     types::{BlockNumber, Filter, ValueOrArray, H256, U64},
 };
+use futures::StreamExt;
 use indicatif::ProgressBar;
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
@@ -102,5 +104,21 @@ impl UniswapV2Pool {
             pools_map.get_mut(&address).unwrap().reserve_1 = event.reserve_1;
         }
         pools
+    }
+
+    pub async fn subscribe_sync_event<F>(wss: Arc<Provider<Ws>>, func: F)
+    where
+        F: Fn(H160, SyncFilter) -> (),
+    {
+        let filter = Filter::new().topic0(ValueOrArray::Value(SYNC_EVENT_SIGNATURE));
+        let mut stream = wss
+            .subscribe_logs(&filter)
+            .await
+            .expect("Could not subscribe to sync event");
+        while let Some(log) = stream.next().await {
+            let sync_event: SyncFilter = SyncFilter::decode_log(&RawLog::from(log.clone()))
+                .expect("Failed to decode SyncFilter data");
+            func(log.address, sync_event);
+        }
     }
 }
