@@ -119,6 +119,14 @@ impl Checkpoint<Vec<UniswapV2Pool>> {
 
             // Continue from last synced block and get the rest from the logs
             Some(mut checkpoint) => {
+                UniswapV2Pool::sync_pools_from_logs(
+                    (checkpoint.last_block + 1) as usize,
+                    current_block as usize,
+                    100,
+                    &mut checkpoint.data,
+                    provider.http.clone(),
+                )
+                .await;
                 let new_pairs = factory
                     .get_pair_addresses_from_logs_concurrent(
                         checkpoint.last_block as usize,
@@ -199,5 +207,62 @@ impl Checkpoint<HashMap<H160, U256>> {
         };
         checkpoint.save_data();
         checkpoint
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::str::FromStr;
+
+    use ethers::types::H160;
+    use itertools::Itertools;
+    use rand::{seq::SliceRandom, thread_rng};
+
+    use crate::{
+        amm::uniswap_v2::{factory::UniswapV2Factory, pool::UniswapV2Pool},
+        checkpoint::Checkpoint,
+        middleware::EthProvider,
+    };
+
+    #[tokio::test]
+    async fn test_checkpoint_sync_pools_from_logs() {
+        dotenv::dotenv().ok();
+        let provider = EthProvider::new().await;
+        let factory_address = H160::from_str("0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f").unwrap();
+        let factory: UniswapV2Factory = UniswapV2Factory::new(factory_address, 300);
+        let pools =
+            Checkpoint::<Vec<UniswapV2Pool>>::sync_uniswap_v2_pools(&provider, factory, 100).await;
+        // Randomly choose 100 elements
+        let mut rng = thread_rng();
+        let random_pools: Vec<_> = pools
+            .data
+            .into_iter()
+            .filter(|p| p.token_a_decimals > 0 && p.token_b_decimals > 0 && p.reserve_0 > 0)
+            .collect_vec()
+            .choose_multiple(&mut rng, 1000)
+            .cloned()
+            .collect();
+
+        assert_eq!(random_pools.len(), 1000);
+        // Use cloned data in async calls
+        let futures = random_pools
+            .clone()
+            .into_iter()
+            .map(|p| {
+                let http_client = provider.http.clone();
+                async move { p.get_reserves(http_client).await }
+            })
+            .collect::<Vec<_>>();
+
+        let results = futures::future::join_all(futures).await;
+
+        for idx in 0..results.len() {
+            assert_eq!(
+                random_pools[idx].reserve_0, results[idx].0,
+                "{:?}",
+                random_pools[idx].address
+            );
+            assert_eq!(random_pools[idx].reserve_1, results[idx].1);
+        }
     }
 }

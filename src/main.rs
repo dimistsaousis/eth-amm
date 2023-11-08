@@ -1,9 +1,11 @@
-use std::{collections::HashMap, str::FromStr};
+use std::str::FromStr;
 
 use eth_amm::{
-    amm::uniswap_v2::factory::UniswapV2Factory, checkpoint::Checkpoint, middleware::EthProvider,
+    amm::uniswap_v2::{factory::UniswapV2Factory, pool::UniswapV2Pool},
+    checkpoint::Checkpoint,
+    middleware::EthProvider,
 };
-use ethers::types::{H160, U256};
+use ethers::types::H160;
 
 #[tokio::main]
 async fn main() {
@@ -11,14 +13,20 @@ async fn main() {
     let provider = EthProvider::new().await;
     let factory_address = H160::from_str("0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f").unwrap();
     let factory: UniswapV2Factory = UniswapV2Factory::new(factory_address, 300);
-    let Checkpoint {
-        data: weth_values, ..
-    } = Checkpoint::<HashMap<H160, U256>>::sync_uniswap_v2_pools_eth_value(&provider, factory, 100)
-        .await;
-    let min_value = U256::from(10) * U256::exp10(18);
-    let weth_values: HashMap<_, _> = weth_values
-        .iter()
-        .filter(|(_, &value)| &value > &min_value)
+    let checkpoint =
+        Checkpoint::<Vec<UniswapV2Pool>>::sync_uniswap_v2_pools(&provider, factory, 100).await;
+    let address = H160::from_str("0xeb1eb49bf534a4b43e47ba2ae7351ac966d29a9a").unwrap();
+    let pool = UniswapV2Pool::from_address(provider.http.clone(), address, 300).await;
+    println!(
+        "{}, {}, {}, {}",
+        pool.reserve_0, pool.reserve_1, pool.token_a_decimals, pool.token_b_decimals
+    );
+
+    let pools: Vec<UniswapV2Pool> = checkpoint
+        .data
+        .into_iter()
+        .filter(|p| p.address == address)
         .collect();
-    println!("Got {} pools with value > 1000 ETH", weth_values.len());
+    let pool = &pools[0];
+    println!("{}, {}", pool.reserve_0, pool.reserve_1);
 }
