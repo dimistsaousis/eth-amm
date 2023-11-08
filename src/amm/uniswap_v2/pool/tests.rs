@@ -1,6 +1,6 @@
-use crate::middleware::EthProvider;
-
 use super::*;
+use crate::middleware::EthProvider;
+use maplit::hashset;
 use std::str::FromStr;
 struct SetupResult(UniswapV2Pool, EthProvider);
 
@@ -90,7 +90,7 @@ async fn test_sync_events() {
         (last_block - 100) as usize,
         last_block as usize,
         10,
-        vec![pool.address],
+        hashset![pool.address],
         provider.http,
     )
     .await;
@@ -98,4 +98,26 @@ async fn test_sync_events() {
     let event = &events[&pool.address];
     assert_eq!(event.reserve_0, pool.reserve_0);
     assert_eq!(event.reserve_1, pool.reserve_1);
+}
+
+#[tokio::test]
+async fn test_sync_pools_from_logs() {
+    let SetupResult(mut pool, provider) = setup().await;
+    pool.reserve_0 = 0;
+    pool.reserve_1 = 0;
+    let mut pools = vec![pool];
+    let last_block = provider.get_block_number().await;
+    assert_eq!(&0, &pools[0].reserve_0);
+    assert_eq!(&0, &pools[0].reserve_1);
+    UniswapV2Pool::sync_pools_from_logs(
+        (last_block - 100) as usize,
+        last_block as usize,
+        10,
+        &mut pools,
+        provider.http.clone(),
+    )
+    .await;
+    let (r0, r1) = pools[0].get_reserves(provider.http).await;
+    assert_eq!(&r0, &pools[0].reserve_0);
+    assert_eq!(&r1, &pools[0].reserve_1);
 }

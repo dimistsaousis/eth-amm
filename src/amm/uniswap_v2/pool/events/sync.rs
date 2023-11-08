@@ -8,7 +8,7 @@ use ethers::{
     types::{BlockNumber, Filter, ValueOrArray, H256, U64},
 };
 use indicatif::ProgressBar;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
 
 pub const SYNC_EVENT_SIGNATURE: H256 = H256([
@@ -20,7 +20,7 @@ impl UniswapV2Pool {
     async fn get_sync_events_from_logs<'a, M: Middleware + 'a>(
         start: usize,
         end: usize,
-        addresses: Vec<H160>,
+        addresses: HashSet<H160>,
         middleware: Arc<M>,
         progress_bar: Option<Arc<Mutex<ProgressBar>>>,
     ) -> Result<HashMap<H160, SyncFilter>, BatchError> {
@@ -28,7 +28,6 @@ impl UniswapV2Pool {
             .get_logs(
                 &Filter::new()
                     .topic0(ValueOrArray::Value(SYNC_EVENT_SIGNATURE))
-                    .address(addresses)
                     .from_block(BlockNumber::Number(U64([start as u64])))
                     .to_block(BlockNumber::Number(U64([end as u64]))),
             )
@@ -38,16 +37,18 @@ impl UniswapV2Pool {
         let mut sync_events = HashMap::new();
         let mut last_event: HashMap<H160, (U64, U256)> = HashMap::new();
         for log in logs {
-            if let (Some(block_number), Some(index)) = (log.block_number, log.log_index) {
-                let address = log.address;
-                let default_value = (U64::from(0), U256::from(0));
-                let (current_block_number, current_index) =
-                    last_event.get(&address).unwrap_or(&default_value);
-                if (&block_number, &index) >= (current_block_number, current_index) {
-                    let sync_event: SyncFilter = SyncFilter::decode_log(&RawLog::from(log))
-                        .map_err(|_| BatchError::new(start, end))?;
-                    last_event.insert(address, (*current_block_number, *current_index));
-                    sync_events.insert(address, sync_event);
+            let address = log.address;
+            if addresses.contains(&address) {
+                if let (Some(block_number), Some(index)) = (log.block_number, log.log_index) {
+                    let default_value = (U64::from(0), U256::from(0));
+                    let (current_block_number, current_index) =
+                        last_event.get(&address).unwrap_or(&default_value);
+                    if (&block_number, &index) >= (current_block_number, current_index) {
+                        let sync_event: SyncFilter = SyncFilter::decode_log(&RawLog::from(log))
+                            .map_err(|_| BatchError::new(start, end))?;
+                        last_event.insert(address, (*current_block_number, *current_index));
+                        sync_events.insert(address, sync_event);
+                    }
                 }
             }
         }
@@ -61,7 +62,7 @@ impl UniswapV2Pool {
         start: usize,
         end: usize,
         step: usize,
-        addresses: Vec<H160>,
+        addresses: HashSet<H160>,
         middleware: Arc<M>,
     ) -> HashMap<H160, SyncFilter> {
         let batch_func = |start: usize,
@@ -75,5 +76,31 @@ impl UniswapV2Pool {
             start, end, step
         );
         run_concurrent_hash(start, end, step, middleware, batch_func).await
+    }
+
+    pub async fn sync_pools_from_logs<'a, M: Middleware + 'a>(
+        start: usize,
+        end: usize,
+        step: usize,
+        pools: &mut Vec<Self>,
+        middleware: Arc<M>,
+    ) -> &mut Vec<Self> {
+        let mut pools_map = HashMap::new();
+        let addresses = pools
+            .into_iter()
+            .map(|p| {
+                let address = p.address;
+                pools_map.insert(address, p);
+                address
+            })
+            .collect();
+        let sync_events =
+            Self::get_sync_events_from_logs_concurrent(start, end, step, addresses, middleware)
+                .await;
+        for (address, event) in sync_events {
+            pools_map.get_mut(&address).unwrap().reserve_0 = event.reserve_0;
+            pools_map.get_mut(&address).unwrap().reserve_1 = event.reserve_1;
+        }
+        pools
     }
 }
