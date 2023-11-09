@@ -4,7 +4,7 @@ use ethers::types::H160;
 
 use crate::amm::uniswap_v2::pool::UniswapV2Pool;
 
-pub fn get_pools_by_token_address(pools: Vec<UniswapV2Pool>) -> HashMap<H160, Vec<UniswapV2Pool>> {
+pub fn get_token_to_pool_map(pools: Vec<UniswapV2Pool>) -> HashMap<H160, Vec<UniswapV2Pool>> {
     let mut pools_by_token_address: HashMap<H160, Vec<UniswapV2Pool>> = HashMap::new();
     for pool in pools {
         pools_by_token_address
@@ -19,7 +19,7 @@ pub fn get_pools_by_token_address(pools: Vec<UniswapV2Pool>) -> HashMap<H160, Ve
     pools_by_token_address
 }
 
-pub fn get_token_path(start_token: H160, pool_path: Vec<UniswapV2Pool>) -> Vec<H160> {
+fn get_token_path(start_token: H160, pool_path: Vec<UniswapV2Pool>) -> Vec<H160> {
     let mut current_token = start_token;
     let mut token_path = vec![current_token];
     for pool in pool_path {
@@ -29,21 +29,21 @@ pub fn get_token_path(start_token: H160, pool_path: Vec<UniswapV2Pool>) -> Vec<H
     token_path
 }
 
-pub fn get_all_token_paths(
+pub fn find_token_paths(
     token: H160,
-    exchange_map: HashMap<H160, Vec<UniswapV2Pool>>,
+    token_to_pool_map: HashMap<H160, Vec<UniswapV2Pool>>,
     max_length: usize,
 ) -> Vec<Vec<H160>> {
-    let exchange_paths = get_all_exchange_paths(token, exchange_map, max_length);
+    let exchange_paths = find_pool_paths(token, token_to_pool_map, max_length);
     exchange_paths
         .into_iter()
         .map(|path| get_token_path(token, path))
         .collect()
 }
 
-pub fn get_all_exchange_paths(
+pub fn find_pool_paths(
     token: H160,
-    exchange_map: HashMap<H160, Vec<UniswapV2Pool>>,
+    token_to_pool_map: HashMap<H160, Vec<UniswapV2Pool>>,
     max_length: usize,
 ) -> Vec<Vec<UniswapV2Pool>> {
     let mut paths = Vec::new();
@@ -53,7 +53,7 @@ pub fn get_all_exchange_paths(
     find_paths(
         token,
         token,
-        &exchange_map,
+        &token_to_pool_map,
         max_length,
         &mut visited,
         &mut current_path,
@@ -66,7 +66,7 @@ pub fn get_all_exchange_paths(
 fn find_paths(
     start_token: H160,
     current_token: H160,
-    exchange_map: &HashMap<H160, Vec<UniswapV2Pool>>,
+    token_to_pool_map: &HashMap<H160, Vec<UniswapV2Pool>>,
     max_length: usize,
     visited: &mut HashSet<H160>,
     current_path: &mut Vec<UniswapV2Pool>,
@@ -90,7 +90,7 @@ fn find_paths(
         return;
     }
 
-    if let Some(exchanges) = exchange_map.get(&current_token) {
+    if let Some(exchanges) = token_to_pool_map.get(&current_token) {
         for exchange in exchanges {
             if !visited.contains(&exchange.address) {
                 visited.insert(exchange.address.clone());
@@ -102,7 +102,7 @@ fn find_paths(
                 find_paths(
                     start_token,
                     next_token,
-                    exchange_map,
+                    token_to_pool_map,
                     max_length,
                     visited,
                     current_path,
@@ -153,7 +153,7 @@ mod tests {
                 pools.push(pool)
             }
         }
-        let pools_map: HashMap<H160, Vec<UniswapV2Pool>> = get_pools_by_token_address(pools);
+        let pools_map: HashMap<H160, Vec<UniswapV2Pool>> = get_token_to_pool_map(pools);
 
         SetupResult(start_token, pools_map)
     }
@@ -161,14 +161,14 @@ mod tests {
     #[tokio::test]
     async fn test_get_all_exchanges_paths() {
         let SetupResult(start_token, pools_map) = setup().await;
-        let paths = get_all_exchange_paths(start_token, pools_map, 3);
+        let paths = find_pool_paths(start_token, pools_map, 3);
         assert_eq!(paths.len(), 1);
     }
 
     #[tokio::test]
-    async fn test_get_all_token_paths() {
+    async fn test_find_token_paths() {
         let SetupResult(start_token, pools_map) = setup().await;
-        let paths = get_all_token_paths(start_token, pools_map, 3);
+        let paths = find_token_paths(start_token, pools_map, 3);
         assert_eq!(paths.len(), 1);
         let path = paths.into_iter().next().unwrap();
         assert_eq!(path.len(), 4);
