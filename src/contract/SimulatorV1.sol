@@ -9,11 +9,10 @@ import "./protocols/ICurvePool.sol";
 contract SimulatorV1 {
     using SafeMath for uint256;
 
-    // Polygon network addresses
+    // Mainnet network addresses
     address public UNISWAP_V2_FACTORY =
-        0x5757371414417b8C6CAad45bAeF941aBc7d3Ab32;
-    address public UNISWAP_V3_QUOTER2 =
-        0x61fFE014bA17989E743c5F6cB21bF9697530B21e;
+        0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f;
+    address public UNISWAP_V3_QUOTER2 = address(0);
 
     struct SwapParams {
         uint8 protocol; // 0 (UniswapV2), 1 (UniswapV3), 2 (Curve Finance)
