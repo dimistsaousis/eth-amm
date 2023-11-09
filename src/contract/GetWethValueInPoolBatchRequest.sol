@@ -79,9 +79,10 @@ contract GetWethValueInPoolBatchRequest {
 
         assembly {
             // Return from the start of the data (discarding the original data address)
-            // up to the end of the memory used
-            let dataStart := add(abiEncodedData, 0x20)
-            return(dataStart, sub(msize(), dataStart))
+            // up to the end of the data
+            let dataStart := add(abiEncodedData, 0x20) // Skip the length field of the bytes array
+            let dataSize := mload(abiEncodedData) // Load the size of the data from the bytes array
+            return(dataStart, dataSize) // Return the data starting from dataStart, with length dataSize
         }
     }
 

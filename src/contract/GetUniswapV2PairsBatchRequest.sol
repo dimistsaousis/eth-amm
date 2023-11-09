@@ -10,11 +10,7 @@ interface IFactory {
       deployment bytecode as payload.
  */
 contract GetUniswapV2PairsBatchRequest {
-    constructor(
-        uint256 from,
-        uint256 step,
-        address factory
-    ) {
+    constructor(uint256 from, uint256 step, address factory) {
         uint256 distance = step - from;
 
         // There is a max number of pool as a too big returned data times out the rpc
@@ -31,9 +27,10 @@ contract GetUniswapV2PairsBatchRequest {
 
         assembly {
             // Return from the start of the data (discarding the original data address)
-            // up to the end of the memory used
-            let dataStart := add(_abiEncodedData, 0x20)
-            return(dataStart, sub(msize(), dataStart))
+            // up to the end of the data
+            let dataStart := add(_abiEncodedData, 0x20) // Skip the length field of the bytes array
+            let dataSize := mload(_abiEncodedData) // Load the size of the data from the bytes array
+            return(dataStart, dataSize) // Return the data starting from dataStart, with length dataSize
         }
     }
 }

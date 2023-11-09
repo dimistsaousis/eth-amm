@@ -9,11 +9,7 @@ interface IUniswapV2Pair {
     function getReserves()
         external
         view
-        returns (
-            uint112 reserve0,
-            uint112 reserve1,
-            uint32 blockTimestampLast
-        );
+        returns (uint112 reserve0, uint112 reserve1, uint32 blockTimestampLast);
 }
 
 interface IERC20 {
@@ -119,9 +115,10 @@ contract GetUniswapV2PoolDataBatchRequest {
 
         assembly {
             // Return from the start of the data (discarding the original data address)
-            // up to the end of the memory used
-            let dataStart := add(_abiEncodedData, 0x20)
-            return(dataStart, sub(msize(), dataStart))
+            // up to the end of the data
+            let dataStart := add(_abiEncodedData, 0x20) // Skip the length field of the bytes array
+            let dataSize := mload(_abiEncodedData) // Load the size of the data from the bytes array
+            return(dataStart, dataSize) // Return the data starting from dataStart, with length dataSize
         }
     }
 
