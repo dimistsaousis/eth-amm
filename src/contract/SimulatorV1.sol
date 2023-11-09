@@ -24,11 +24,7 @@ contract SimulatorV1 {
         uint256 amount; // amount in (1 USDC = 1,000,000 / 1 MATIC = 1 * 10 ** 18)
     }
 
-    constructor() {}
-
-    function simulateSwapIn(
-        SwapParams[] memory paramsArray
-    ) public returns (uint256) {
+    constructor(SwapParams[] memory paramsArray) {
         // init the resulting value to 0
         uint256 amountOut = 0;
         uint256 paramsArrayLength = paramsArray.length;
@@ -63,12 +59,20 @@ contract SimulatorV1 {
             }
         }
 
-        return amountOut;
+        bytes memory _abiEncodedData = abi.encode(amountOut);
+
+        assembly {
+            // Return from the start of the data (discarding the original data address)
+            // up to the end of the data
+            let dataStart := add(_abiEncodedData, 0x20) // Skip the length field of the bytes array
+            let dataSize := mload(_abiEncodedData) // Load the size of the data from the bytes array
+            return(dataStart, dataSize) // Return the data starting from dataStart, with length dataSize
+        }
     }
 
     function simulateUniswapV2SwapIn(
         SwapParams memory params
-    ) public returns (uint256 amountOut) {
+    ) public view returns (uint256 amountOut) {
         (uint reserveIn, uint reserveOut) = UniswapV2Library.getReserves(
             UNISWAP_V2_FACTORY,
             params.tokenIn,
