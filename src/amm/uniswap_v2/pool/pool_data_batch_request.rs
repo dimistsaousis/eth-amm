@@ -1,5 +1,5 @@
-use super::{contracts::GetUniswapV2PoolDataBatchRequest, UniswapV2Pool};
-use crate::concurrent::run_concurrent;
+use super::UniswapV2Pool;
+use crate::{concurrent::run_concurrent, contract::GetUniswapV2PoolDataBatchRequest};
 use ethers::{
     abi::{ParamType, Token},
     providers::Middleware,

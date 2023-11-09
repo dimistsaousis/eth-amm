@@ -1,11 +1,10 @@
-pub mod contracts;
 pub mod events;
 pub mod pool_data_batch_request;
-use self::{
-    contracts::{IErc20, IUniswapV2Pair},
-    pool_data_batch_request::get_uniswap_v2_pool_data_concurrent,
+use self::pool_data_batch_request::get_uniswap_v2_pool_data_concurrent;
+use crate::{
+    arithmetic::{div_uu, q64_to_f64, U128_0X10000000000000000},
+    contract::{IErc20, IUniswapV2Pair},
 };
-use crate::arithmetic::{div_uu, q64_to_f64, U128_0X10000000000000000};
 use ethers::{
     providers::Middleware,
     types::{H160, U256},

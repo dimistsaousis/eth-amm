@@ -1,6 +1,9 @@
 use ethers::prelude::abigen;
 
 abigen!(
+    GetWethValueInPoolBatchRequest,
+    "./out/GetWethValueInPoolBatchRequest.sol/GetWethValueInPoolBatchRequest.json";
+
     IUniswapV2Pair,
     r#"[
         function getReserves() external view returns (uint112 reserve0, uint112 reserve1, uint32 blockTimestampLast)
@@ -19,4 +22,16 @@ abigen!(
 
     GetUniswapV2PoolDataBatchRequest,
     "./out/GetUniswapV2PoolDataBatchRequest.sol/GetUniswapV2PoolDataBatchRequest.json";
+
+    GetUniswapV2PairsBatchRequest,
+        "./out/GetUniswapV2PairsBatchRequest.sol/GetUniswapV2PairsBatchRequest.json";
+
+    IUniswapV2Factory,
+    r#"[
+        function getPair(address tokenA, address tokenB) external view returns (address pair)
+        function allPairs(uint256 index) external view returns (address)
+        event PairCreated(address indexed token0, address indexed token1, address pair, uint256)
+        function allPairsLength() external view returns (uint256)
+
+    ]"#;
 );

@@ -1,16 +1,11 @@
 use crate::concurrent::{run_concurrent_hash, BatchError};
+use crate::contract::GetWethValueInPoolBatchRequest;
 use ethers::abi::{ParamType, Token};
-use ethers::prelude::abigen;
 use ethers::types::{Bytes, U256};
 use ethers::{providers::Middleware, types::H160};
 use indicatif::ProgressBar;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
-
-abigen!(
-    GetWethValueInPoolBatchRequest,
-    "./out/GetWethValueInPoolBatchRequest.sol/GetWethValueInPoolBatchRequest.json";
-);
 
 async fn get_weth_value_in_pool_batch_request<M: Middleware>(
     pool_addresses: &[H160],

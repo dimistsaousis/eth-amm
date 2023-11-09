@@ -7,9 +7,9 @@ use ethers::{
 };
 use indicatif::ProgressBar;
 
-use crate::concurrent::run_concurrent;
+use crate::{concurrent::run_concurrent, contract::GetUniswapV2PairsBatchRequest};
 
-use super::{contracts::GetUniswapV2PairsBatchRequest, UniswapV2Factory};
+use super::UniswapV2Factory;
 
 impl UniswapV2Factory {
     async fn get_pair_addresses_from_factory_batch<M: Middleware>(

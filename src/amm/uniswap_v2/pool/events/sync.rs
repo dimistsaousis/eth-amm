@@ -1,5 +1,6 @@
-use crate::amm::uniswap_v2::pool::{contracts::SyncFilter, UniswapV2Pool};
+use crate::amm::uniswap_v2::pool::UniswapV2Pool;
 use crate::concurrent::{run_concurrent_hash, BatchError};
+use crate::contract::SyncFilter;
 use ethers::prelude::EthEvent;
 use ethers::providers::{Provider, Ws};
 use ethers::types::{H160, U256};

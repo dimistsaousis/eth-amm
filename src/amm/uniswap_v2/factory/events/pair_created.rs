@@ -1,6 +1,6 @@
-use crate::amm::uniswap_v2::factory::contracts::PairCreatedFilter;
 use crate::amm::uniswap_v2::factory::UniswapV2Factory;
 use crate::concurrent::run_concurrent;
+use crate::contract::PairCreatedFilter;
 use ethers::abi::RawLog;
 use ethers::prelude::EthEvent;
 use ethers::providers::{Provider, Ws};

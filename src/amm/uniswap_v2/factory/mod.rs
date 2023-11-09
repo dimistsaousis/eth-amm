@@ -1,9 +1,9 @@
-pub mod contracts;
 pub mod events;
 mod pair_addresses_batch_request;
-use self::contracts::IUniswapV2Factory;
 use ethers::{providers::Middleware, types::H160};
 use std::sync::Arc;
+
+use crate::contract::IUniswapV2Factory;
 
 pub struct UniswapV2Factory {
     pub address: H160,
