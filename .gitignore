@@ -3,5 +3,4 @@
 Cargo.lock
 .vscode
 /src/checkpoint/data/
-/src/contract/node_modules
-/src/contract/package-lock.json
+/cache
