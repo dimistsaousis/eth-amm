@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 
 use ethers::types::H160;
 
-use crate::amm::uniswap_v2::pool::UniswapV2Pool;
+use crate::amm::uniswap_v2::pool::{self, UniswapV2Pool};
 
 pub fn get_pools_by_token_address(pools: Vec<UniswapV2Pool>) -> HashMap<H160, Vec<UniswapV2Pool>> {
     let mut pools_by_token_address: HashMap<H160, Vec<UniswapV2Pool>> = HashMap::new();
@@ -17,6 +17,27 @@ pub fn get_pools_by_token_address(pools: Vec<UniswapV2Pool>) -> HashMap<H160, Ve
             .push(pool);
     }
     pools_by_token_address
+}
+
+pub fn get_token_path(start_token: H160, pool_path: Vec<UniswapV2Pool>) -> Vec<H160> {
+    let mut current_token = start_token;
+    let mut token_path = vec![current_token];
+    for pool in pool_path {
+        current_token = pool.get_token_out(current_token);
+        token_path.push(current_token);
+    }
+    token_path
+}
+
+pub fn get_all_token_paths(
+    token: H160,
+    exchange_map: HashMap<H160, Vec<UniswapV2Pool>>,
+) -> Vec<Vec<H160>> {
+    let exchange_paths = get_all_exchange_paths(token, exchange_map);
+    exchange_paths
+        .into_iter()
+        .map(|path| get_token_path(token, path))
+        .collect()
 }
 
 pub fn get_all_exchange_paths(
@@ -38,6 +59,7 @@ pub fn get_all_exchange_paths(
     );
     paths
 }
+
 fn find_paths(
     start_token: H160,
     current_token: H160,
@@ -92,7 +114,7 @@ mod tests {
     use itertools::Itertools;
     use std::str::FromStr;
 
-    struct SetupResult(UniswapV2Factory, EthProvider);
+    struct SetupResult(H160, HashMap<H160, Vec<UniswapV2Pool>>);
 
     async fn setup() -> SetupResult {
         // Create and return the necessary test
@@ -101,12 +123,6 @@ mod tests {
         let factory_address = H160::from_str("0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f").unwrap();
         let factory: UniswapV2Factory = UniswapV2Factory::new(factory_address, 300);
 
-        SetupResult(factory, provider)
-    }
-
-    #[tokio::test]
-    async fn test_get_all_exchanges_paths() {
-        let SetupResult(factory, provider) = setup().await;
         let tokens: Vec<H160> = vec![
             "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
             "0x514910771AF9Ca656af840dff83E8264EcF986CA",
@@ -115,9 +131,10 @@ mod tests {
         .into_iter()
         .map(|a| H160::from_str(a).unwrap())
         .collect();
+
         let start_token = tokens[0].clone();
         let mut pools = vec![];
-        for t in tokens.into_iter().combinations(2) {
+        for t in tokens.clone().into_iter().combinations(2) {
             if let [t1, t2] = t.as_slice() {
                 let pool_address = factory
                     .get_pair_address(provider.http.clone(), *t1, *t2)
@@ -128,7 +145,28 @@ mod tests {
             }
         }
         let pools_map: HashMap<H160, Vec<UniswapV2Pool>> = get_pools_by_token_address(pools);
+
+        SetupResult(start_token, pools_map)
+    }
+
+    #[tokio::test]
+    async fn test_get_all_exchanges_paths() {
+        let SetupResult(start_token, pools_map) = setup().await;
         let paths = get_all_exchange_paths(start_token, pools_map);
         assert_eq!(paths.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn test_get_all_token_paths() {
+        let SetupResult(start_token, pools_map) = setup().await;
+        let paths = get_all_token_paths(start_token, pools_map);
+        assert_eq!(paths.len(), 1);
+        let path = paths.into_iter().next().unwrap();
+        assert_eq!(path.len(), 4);
+        assert_eq!(path.as_slice()[0], start_token);
+        assert_ne!(path.as_slice()[1], start_token);
+        assert_ne!(path.as_slice()[2], start_token);
+        assert_ne!(path.as_slice()[2], path.as_slice()[1]);
+        assert_eq!(path.last(), Some(&start_token));
     }
 }
