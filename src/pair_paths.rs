@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 
 use ethers::types::H160;
 
-use crate::amm::uniswap_v2::pool::{self, UniswapV2Pool};
+use crate::amm::uniswap_v2::pool::UniswapV2Pool;
 
 pub fn get_pools_by_token_address(pools: Vec<UniswapV2Pool>) -> HashMap<H160, Vec<UniswapV2Pool>> {
     let mut pools_by_token_address: HashMap<H160, Vec<UniswapV2Pool>> = HashMap::new();
