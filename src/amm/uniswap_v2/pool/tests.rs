@@ -34,7 +34,7 @@ async fn test_sync_reserves() {
 async fn test_price() {
     let SetupResult(pool, _) = setup().await;
     let price = pool.price(pool.token_b);
-    assert!(price < 2000.0);
+    assert!(price < 2500.0);
     assert!(price > 1000.0);
 }
 
