@@ -1,4 +1,4 @@
-use super::{contracts::IGetUniswapV2PoolDataBatchRequest, UniswapV2Pool};
+use super::{contracts::GetUniswapV2PoolDataBatchRequest, UniswapV2Pool};
 use crate::concurrent::run_concurrent;
 use ethers::{
     abi::{ParamType, Token},
@@ -19,13 +19,13 @@ pub async fn get_amm_data_batch_request<M: Middleware>(
         .map(|&address| Token::Address(address))
         .collect();
     let constructor_args = Token::Tuple(vec![Token::Array(token_addresses)]);
-    let deployer = IGetUniswapV2PoolDataBatchRequest::deploy(middleware.clone(), constructor_args)
-        .expect("Failed to deply IGetUniswapV2PoolDataBatchRequest");
+    let deployer = GetUniswapV2PoolDataBatchRequest::deploy(middleware.clone(), constructor_args)
+        .expect("Failed to deply GetUniswapV2PoolDataBatchRequest");
 
     let return_data: Bytes = deployer
         .call_raw()
         .await
-        .expect("Failed to call IGetUniswapV2PoolDataBatchRequest.");
+        .expect("Failed to call GetUniswapV2PoolDataBatchRequest.");
     let return_data_tokens = ethers::abi::decode(
         &[ParamType::Array(Box::new(ParamType::Tuple(vec![
             ParamType::Address,   // token a
@@ -37,7 +37,7 @@ pub async fn get_amm_data_batch_request<M: Middleware>(
         ])))],
         &return_data,
     )
-    .expect("Failed to decode IGetUniswapV2PoolDataBatchRequest");
+    .expect("Failed to decode GetUniswapV2PoolDataBatchRequest");
     let pool_tokens = return_data_tokens
         .into_iter()
         .next()

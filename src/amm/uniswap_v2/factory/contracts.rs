@@ -1,8 +1,8 @@
 use ethers::prelude::abigen;
 
 abigen!(
-    IGetUniswapV2PairsBatchRequest,
-        "src/contract/abi/GetUniswapV2PairsBatchRequestABI.json";
+    GetUniswapV2PairsBatchRequest,
+        "./out/GetUniswapV2PairsBatchRequest.sol/GetUniswapV2PairsBatchRequest.json";
 
     IUniswapV2Factory,
     r#"[

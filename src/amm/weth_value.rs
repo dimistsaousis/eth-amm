@@ -8,8 +8,8 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
 abigen!(
-    GetWethValueInAMMBatchRequest,
-    "src/contract/abi/GetWethValueInAMMBatchRequest.json";
+    GetWethValueInPoolBatchRequest,
+    "./out/GetWethValueInPoolBatchRequest.sol/GetWethValueInPoolBatchRequest.json";
 );
 
 async fn get_weth_value_in_pool_batch_request<M: Middleware>(
@@ -45,7 +45,7 @@ async fn get_weth_value_in_pool_batch_request<M: Middleware>(
         Token::Uint(weth_threshold),
     ]);
 
-    let deployer = GetWethValueInAMMBatchRequest::deploy(middleware, constructor_args)
+    let deployer = GetWethValueInPoolBatchRequest::deploy(middleware, constructor_args)
         .map_err(|_| BatchError::new(start, end))?;
 
     let return_data: Bytes = deployer

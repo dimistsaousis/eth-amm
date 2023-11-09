@@ -17,6 +17,6 @@ abigen!(
         function decimals() external view returns (uint8)
     ]"#;
 
-    IGetUniswapV2PoolDataBatchRequest,
-    "src/contract/abi/GetUniswapV2PoolDataBatchRequestABI.json";
+    GetUniswapV2PoolDataBatchRequest,
+    "./out/GetUniswapV2PoolDataBatchRequest.sol/GetUniswapV2PoolDataBatchRequest.json";
 );
