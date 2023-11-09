@@ -1,4 +1,7 @@
-use crate::contract::{SimulatorV1, SwapParams};
+use crate::{
+    amm::uniswap_v2::pool::UniswapV2Pool,
+    contract::{SimulatorV1, SwapParams},
+};
 use ethers::{
     abi::{ParamType, Token},
     providers::Middleware,
@@ -26,6 +29,16 @@ impl SwapParams {
                 .collect::<Vec<Token>>(),
         )
     }
+}
+
+pub async fn simulate_swap_offline(token: H160, amount: U256, path: Vec<UniswapV2Pool>) -> U256 {
+    let mut token = token;
+    let mut amount = amount;
+    for pool in path {
+        amount = pool.simulate_swap(token, amount);
+        token = pool.get_token_out(token);
+    }
+    amount
 }
 
 pub async fn simulate_swap<M: Middleware>(
@@ -76,7 +89,7 @@ mod tests {
     async fn test_simulate_swap() {
         let SetupResult(provider, weth, usdc) = setup().await;
         let res = simulate_swap(provider.http, weth, usdc).await;
-        println!("{:?}", res);
-        assert!(false);
+        assert!(res > U256::exp10(6) * U256::from(1000));
+        assert!(res < U256::exp10(6) * U256::from(2500));
     }
 }
