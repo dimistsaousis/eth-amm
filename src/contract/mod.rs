@@ -24,7 +24,10 @@ abigen!(
     "./out/GetUniswapV2PoolDataBatchRequest.sol/GetUniswapV2PoolDataBatchRequest.json";
 
     GetUniswapV2PairsBatchRequest,
-        "./out/GetUniswapV2PairsBatchRequest.sol/GetUniswapV2PairsBatchRequest.json";
+    "./out/GetUniswapV2PairsBatchRequest.sol/GetUniswapV2PairsBatchRequest.json";
+
+    SimulatorV1,
+    "./out/SimulatorV1.sol/SimulatorV1.json";
 
     IUniswapV2Factory,
     r#"[
