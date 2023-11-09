@@ -32,8 +32,9 @@ pub fn get_token_path(start_token: H160, pool_path: Vec<UniswapV2Pool>) -> Vec<H
 pub fn get_all_token_paths(
     token: H160,
     exchange_map: HashMap<H160, Vec<UniswapV2Pool>>,
+    max_length: usize,
 ) -> Vec<Vec<H160>> {
-    let exchange_paths = get_all_exchange_paths(token, exchange_map);
+    let exchange_paths = get_all_exchange_paths(token, exchange_map, max_length);
     exchange_paths
         .into_iter()
         .map(|path| get_token_path(token, path))
@@ -43,6 +44,7 @@ pub fn get_all_token_paths(
 pub fn get_all_exchange_paths(
     token: H160,
     exchange_map: HashMap<H160, Vec<UniswapV2Pool>>,
+    max_length: usize,
 ) -> Vec<Vec<UniswapV2Pool>> {
     let mut paths = Vec::new();
     let mut visited = HashSet::new();
@@ -52,6 +54,7 @@ pub fn get_all_exchange_paths(
         token,
         token,
         &exchange_map,
+        max_length,
         &mut visited,
         &mut current_path,
         &mut paths,
@@ -64,6 +67,7 @@ fn find_paths(
     start_token: H160,
     current_token: H160,
     exchange_map: &HashMap<H160, Vec<UniswapV2Pool>>,
+    max_length: usize,
     visited: &mut HashSet<H160>,
     current_path: &mut Vec<UniswapV2Pool>,
     paths: &mut Vec<Vec<UniswapV2Pool>>,
@@ -82,6 +86,10 @@ fn find_paths(
         return;
     }
 
+    if current_path.len() == max_length {
+        return;
+    }
+
     if let Some(exchanges) = exchange_map.get(&current_token) {
         for exchange in exchanges {
             if !visited.contains(&exchange.address) {
@@ -95,6 +103,7 @@ fn find_paths(
                     start_token,
                     next_token,
                     exchange_map,
+                    max_length,
                     visited,
                     current_path,
                     paths,
@@ -152,14 +161,14 @@ mod tests {
     #[tokio::test]
     async fn test_get_all_exchanges_paths() {
         let SetupResult(start_token, pools_map) = setup().await;
-        let paths = get_all_exchange_paths(start_token, pools_map);
+        let paths = get_all_exchange_paths(start_token, pools_map, 3);
         assert_eq!(paths.len(), 1);
     }
 
     #[tokio::test]
     async fn test_get_all_token_paths() {
         let SetupResult(start_token, pools_map) = setup().await;
-        let paths = get_all_token_paths(start_token, pools_map);
+        let paths = get_all_token_paths(start_token, pools_map, 3);
         assert_eq!(paths.len(), 1);
         let path = paths.into_iter().next().unwrap();
         assert_eq!(path.len(), 4);
