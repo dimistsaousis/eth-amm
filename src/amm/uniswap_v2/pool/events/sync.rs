@@ -115,6 +115,7 @@ impl UniswapV2Pool {
             .subscribe_logs(&filter)
             .await
             .expect("Could not subscribe to sync event");
+        println!("Subscribed to UniswapV2 sync events.");
         while let Some(log) = stream.next().await {
             let sync_event: SyncFilter = SyncFilter::decode_log(&RawLog::from(log.clone()))
                 .expect("Failed to decode SyncFilter data");
