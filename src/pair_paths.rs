@@ -23,7 +23,7 @@ fn get_token_path(start_token: H160, pool_path: Vec<UniswapV2Pool>) -> Vec<H160>
     let mut current_token = start_token;
     let mut token_path = vec![current_token];
     for pool in pool_path {
-        current_token = pool.get_token_out(current_token);
+        current_token = pool.get_token_out(&current_token);
         token_path.push(current_token);
     }
     token_path
