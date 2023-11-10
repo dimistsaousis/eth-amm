@@ -212,13 +212,11 @@ impl Checkpoint<HashMap<H160, U256>> {
 
 #[cfg(test)]
 mod tests {
-    use std::str::FromStr;
-
-    use ethers::types::H160;
     use itertools::Itertools;
     use rand::{seq::SliceRandom, thread_rng};
 
     use crate::{
+        address_book::AddressBook,
         amm::uniswap_v2::{factory::UniswapV2Factory, pool::UniswapV2Pool},
         checkpoint::Checkpoint,
         middleware::EthProvider,
@@ -228,8 +226,8 @@ mod tests {
     async fn test_checkpoint_sync_pools_from_logs() {
         dotenv::dotenv().ok();
         let provider = EthProvider::new().await;
-        let factory_address = H160::from_str("0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f").unwrap();
-        let factory: UniswapV2Factory = UniswapV2Factory::new(factory_address, 300);
+        let book = AddressBook::new();
+        let factory: UniswapV2Factory = UniswapV2Factory::new(book.mainnet.uniswap_v2.factory, 300);
         let pools =
             Checkpoint::<Vec<UniswapV2Pool>>::sync_uniswap_v2_pools(&provider, factory, 100).await;
         // Randomly choose 100 elements

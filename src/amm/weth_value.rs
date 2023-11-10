@@ -103,12 +103,10 @@ pub async fn get_weth_value_in_pool_concurrent<M: Middleware>(
 
 #[cfg(test)]
 mod tests {
-    use ethers::providers::{Http, Provider};
-    use std::str::FromStr;
-
-    use crate::amm::uniswap_v2::pool::UniswapV2Pool;
-
     use super::*;
+    use crate::{
+        address_book::AddressBook, amm::uniswap_v2::pool::UniswapV2Pool, middleware::EthProvider,
+    };
 
     fn almost_equal(v1: f64, v2: f64, epsilon: f64) -> bool {
         (v1 / v2 - 1f64).abs() < epsilon
@@ -117,27 +115,30 @@ mod tests {
     #[tokio::test]
     async fn test_get_weth_value_in_pool_concurrent() {
         dotenv::dotenv().ok();
-        let rpc_endpoint = std::env::var("NETWORK_RPC").unwrap();
-        let middleware = Arc::new(Provider::<Http>::try_from(rpc_endpoint).unwrap());
-        let weth_usdt = H160::from_str("0x0d4a11d5eeaac28ec3f61d100daf4d40471f1852").unwrap();
-        let factory_address = H160::from_str("0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f").unwrap();
-        let weth = H160::from_str("0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2").unwrap();
+        let provider = EthProvider::new().await;
+        let book = AddressBook::new();
         let weth_threshold = U256::from(10).pow(U256::from(18));
-        let pool_addresses = vec![weth_usdt];
+        let pool_addresses = vec![book.mainnet.uniswap_v2.pairs["weth"]["usdc"]];
+        let factory_addresses = vec![book.mainnet.uniswap_v2.factory];
         let weth_values = get_weth_value_in_pool_concurrent(
             &pool_addresses,
-            &vec![factory_address],
-            weth,
+            &factory_addresses,
+            book.mainnet.erc20["weth"],
             weth_threshold,
             5,
-            middleware.clone(),
+            provider.http.clone(),
         )
         .await;
-        let pool = UniswapV2Pool::from_address(middleware.clone(), weth_usdt, 300).await;
-        let weth_usdt_value = weth_values[&weth_usdt];
+        let pool = UniswapV2Pool::from_address(
+            provider.http.clone(),
+            book.mainnet.uniswap_v2.pairs["weth"]["usdc"],
+            300,
+        )
+        .await;
+        let weth_usdt_value = weth_values[&book.mainnet.uniswap_v2.pairs["weth"]["usdc"]];
         assert!(almost_equal(
             weth_usdt_value.as_u128() as f64,
-            (pool.get_reserve_for_token(weth) * 2) as f64,
+            (pool.get_reserve_for_token(book.mainnet.erc20["weth"]) * 2) as f64,
             0.0005
         ));
     }

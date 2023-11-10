@@ -119,9 +119,11 @@ fn find_paths(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{amm::uniswap_v2::factory::UniswapV2Factory, middleware::EthProvider};
+    use crate::{
+        address_book::AddressBook, amm::uniswap_v2::factory::UniswapV2Factory,
+        middleware::EthProvider,
+    };
     use itertools::Itertools;
-    use std::str::FromStr;
 
     struct SetupResult(H160, HashMap<H160, Vec<UniswapV2Pool>>);
 
@@ -129,17 +131,14 @@ mod tests {
         // Create and return the necessary test
         dotenv::dotenv().ok();
         let provider = EthProvider::new().await;
-        let factory_address = H160::from_str("0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f").unwrap();
-        let factory: UniswapV2Factory = UniswapV2Factory::new(factory_address, 300);
+        let book = AddressBook::new();
+        let factory: UniswapV2Factory = UniswapV2Factory::new(book.mainnet.uniswap_v2.factory, 300);
 
         let tokens: Vec<H160> = vec![
-            "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
-            "0x514910771AF9Ca656af840dff83E8264EcF986CA",
-            "0x7D1AfA7B718fb893dB30A3aBc0Cfc608AaCfeBB0",
-        ]
-        .into_iter()
-        .map(|a| H160::from_str(a).unwrap())
-        .collect();
+            book.mainnet.erc20["weth"],
+            book.mainnet.erc20["link"],
+            book.mainnet.erc20["matic"],
+        ];
 
         let start_token = tokens[0].clone();
         let mut pools = vec![];
