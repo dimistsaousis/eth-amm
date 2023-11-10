@@ -3,6 +3,7 @@ pub mod arithmetic;
 pub mod checkpoint;
 pub mod concurrent;
 pub mod contract;
+pub mod filters;
 pub mod middleware;
 pub mod pair_paths;
 pub mod simulator;
