@@ -93,6 +93,56 @@ impl Checkpoint<Vec<H160>> {
 }
 
 impl Checkpoint<Vec<UniswapV2Pool>> {
+    async fn create_uniswap_v2_pools_checkpoint(
+        provider: &EthProvider,
+        factory: UniswapV2Factory,
+        id: &str,
+        step: usize,
+        current_block: u64,
+    ) -> Self {
+        let pairs =
+            Checkpoint::<Vec<H160>>::sync_uniswap_v2_pair_addresses(provider, factory, step).await;
+        let pools =
+            get_uniswap_v2_pool_data_concurrent(&pairs.data, provider.http.clone(), 300, step)
+                .await;
+        Self::new(current_block, pools, id)
+    }
+
+    async fn update_uniswap_v2_pools_checkpoint(
+        mut self,
+        provider: &EthProvider,
+        factory: UniswapV2Factory,
+        step: usize,
+        current_block: u64,
+    ) -> Self {
+        UniswapV2Pool::sync_pools_from_logs(
+            (self.last_block + 1) as usize,
+            current_block as usize,
+            100,
+            &mut self.data,
+            provider.http.clone(),
+        )
+        .await;
+        let new_pairs = factory
+            .get_pair_addresses_from_logs_concurrent(
+                self.last_block as usize,
+                current_block as usize,
+                step,
+                provider.http.clone(),
+            )
+            .await;
+        let new_pools = get_uniswap_v2_pool_data_concurrent(
+            &new_pairs,
+            provider.http.clone(),
+            300,
+            new_pairs.len().div_ceil(10).max(step),
+        )
+        .await;
+        self.data.extend(new_pools);
+        self.last_block = current_block;
+        self
+    }
+
     pub async fn sync_uniswap_v2_pools(
         provider: &EthProvider,
         factory: UniswapV2Factory,
@@ -101,50 +151,20 @@ impl Checkpoint<Vec<UniswapV2Pool>> {
         let id = format!("uniswap_v2_pools.{:?}", factory.address);
         let current_block = provider.get_block_number().await;
         let checkpoint = match Self::load_data(&id) {
-            // Get all pairs from factory if no checkpoint
             None => {
-                let pairs = Checkpoint::<Vec<H160>>::sync_uniswap_v2_pair_addresses(
-                    provider, factory, step,
-                )
-                .await;
-                let pools = get_uniswap_v2_pool_data_concurrent(
-                    &pairs.data,
-                    provider.http.clone(),
-                    300,
+                Self::create_uniswap_v2_pools_checkpoint(
+                    provider,
+                    factory,
+                    &id,
                     step,
+                    current_block,
                 )
-                .await;
-                Self::new(current_block, pools, &id)
+                .await
             }
-
-            // Continue from last synced block and get the rest from the logs
-            Some(mut checkpoint) => {
-                UniswapV2Pool::sync_pools_from_logs(
-                    (checkpoint.last_block + 1) as usize,
-                    current_block as usize,
-                    100,
-                    &mut checkpoint.data,
-                    provider.http.clone(),
-                )
-                .await;
-                let new_pairs = factory
-                    .get_pair_addresses_from_logs_concurrent(
-                        checkpoint.last_block as usize,
-                        current_block as usize,
-                        step,
-                        provider.http.clone(),
-                    )
-                    .await;
-                let new_pools = get_uniswap_v2_pool_data_concurrent(
-                    &new_pairs,
-                    provider.http.clone(),
-                    300,
-                    new_pairs.len().div_ceil(10).max(step),
-                )
-                .await;
-                checkpoint.data.extend(new_pools);
-                checkpoint.last_block = current_block;
+            Some(checkpoint) => {
                 checkpoint
+                    .update_uniswap_v2_pools_checkpoint(provider, factory, step, current_block)
+                    .await
             }
         };
         checkpoint.save_data();
