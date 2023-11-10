@@ -101,8 +101,9 @@ impl UniswapV2Pool {
             Self::get_sync_events_from_logs_concurrent(start, end, step, addresses, middleware)
                 .await;
         for (address, event) in sync_events {
-            pools_map.get_mut(&address).unwrap().reserve_0 = event.reserve_0;
-            pools_map.get_mut(&address).unwrap().reserve_1 = event.reserve_1;
+            let pool = pools_map.get_mut(&address).unwrap();
+            pool.reserve_0 = event.reserve_0;
+            pool.reserve_1 = event.reserve_1;
         }
         pools
     }
