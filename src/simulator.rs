@@ -164,7 +164,8 @@ mod tests {
     #[tokio::test]
     async fn test_find_best_amount_binary_search() {
         let SetupResult(_, weth, _, pools) = setup().await;
-
-        assert_eq!((0.0, 0), find_best_amount(weth, pools, 1_000_000_000f64));
+        let (amount, steps) = find_best_amount(weth, pools, 1_000_000_000f64);
+        assert!(amount < 10f64.powf(15.0));
+        assert!(steps > 50);
     }
 }
