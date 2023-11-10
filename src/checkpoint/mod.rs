@@ -50,6 +50,42 @@ impl<T: for<'a> Deserialize<'a> + Serialize> Checkpoint<T> {
 }
 
 impl Checkpoint<Vec<H160>> {
+    async fn create(
+        provider: &EthProvider,
+        factory: UniswapV2Factory,
+        step: usize,
+        id: &str,
+        current_block: u64,
+    ) -> Self {
+        let pairs = factory
+            .get_pair_addresses_from_factory(
+                0,
+                factory.all_pairs_length(provider.http.clone()).await as usize,
+                step,
+                provider.http.clone(),
+            )
+            .await;
+        Self::new(current_block, pairs, &id)
+    }
+    async fn update(
+        mut self,
+        provider: &EthProvider,
+        factory: UniswapV2Factory,
+        step: usize,
+        current_block: u64,
+    ) -> Self {
+        let new_pairs = factory
+            .get_pair_addresses_from_logs_concurrent(
+                self.last_block as usize,
+                current_block as usize,
+                step,
+                provider.http.clone(),
+            )
+            .await;
+        self.data.extend(new_pairs);
+        self.last_block = current_block;
+        self
+    }
     pub async fn sync_uniswap_v2_pair_addresses(
         provider: &EthProvider,
         factory: UniswapV2Factory,
@@ -58,34 +94,8 @@ impl Checkpoint<Vec<H160>> {
         let id = format!("uniswap_v2_pair_addresses.{:?}", factory.address);
         let current_block = provider.get_block_number().await;
         let checkpoint = match Self::load_data(&id) {
-            // Get all pairs from factory if no checkpoint
-            None => {
-                let pairs = factory
-                    .get_pair_addresses_from_factory(
-                        0,
-                        factory.all_pairs_length(provider.http.clone()).await as usize,
-                        step,
-                        provider.http.clone(),
-                    )
-                    .await;
-                let checkpoint = Self::new(current_block, pairs, &id);
-                checkpoint
-            }
-
-            // Continue from last synced block and get the rest from the logs
-            Some(mut checkpoint) => {
-                let new_pairs = factory
-                    .get_pair_addresses_from_logs_concurrent(
-                        checkpoint.last_block as usize,
-                        current_block as usize,
-                        step,
-                        provider.http.clone(),
-                    )
-                    .await;
-                checkpoint.data.extend(new_pairs);
-                checkpoint.last_block = current_block;
-                checkpoint
-            }
+            None => Self::create(provider, factory, step, &id, current_block).await,
+            Some(c) => c.update(provider, factory, step, current_block).await,
         };
         checkpoint.save_data();
         checkpoint
@@ -93,7 +103,7 @@ impl Checkpoint<Vec<H160>> {
 }
 
 impl Checkpoint<Vec<UniswapV2Pool>> {
-    async fn create_uniswap_v2_pools_checkpoint(
+    async fn create(
         provider: &EthProvider,
         factory: UniswapV2Factory,
         id: &str,
@@ -108,7 +118,7 @@ impl Checkpoint<Vec<UniswapV2Pool>> {
         Self::new(current_block, pools, id)
     }
 
-    async fn update_uniswap_v2_pools_checkpoint(
+    async fn update(
         mut self,
         provider: &EthProvider,
         factory: UniswapV2Factory,
@@ -151,21 +161,8 @@ impl Checkpoint<Vec<UniswapV2Pool>> {
         let id = format!("uniswap_v2_pools.{:?}", factory.address);
         let current_block = provider.get_block_number().await;
         let checkpoint = match Self::load_data(&id) {
-            None => {
-                Self::create_uniswap_v2_pools_checkpoint(
-                    provider,
-                    factory,
-                    &id,
-                    step,
-                    current_block,
-                )
-                .await
-            }
-            Some(checkpoint) => {
-                checkpoint
-                    .update_uniswap_v2_pools_checkpoint(provider, factory, step, current_block)
-                    .await
-            }
+            None => Self::create(provider, factory, &id, step, current_block).await,
+            Some(c) => c.update(provider, factory, step, current_block).await,
         };
         checkpoint.save_data();
         checkpoint
