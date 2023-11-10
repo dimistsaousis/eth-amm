@@ -1,6 +1,6 @@
 use ethers::types::{H160, U256};
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, fs, str::FromStr};
+use std::{fs, str::FromStr};
 
 use crate::{
     amm::{
@@ -103,6 +103,19 @@ impl Checkpoint<Vec<H160>> {
 }
 
 impl Checkpoint<Vec<UniswapV2Pool>> {
+    fn id(factory_address: &H160) -> String {
+        format!("uniswap_v2_pools.{:?}", factory_address)
+    }
+
+    fn get_factory_address_from_id(id: &String) -> H160 {
+        let address = id.strip_prefix("uniswap_v2_pools.").unwrap();
+        H160::from_str(address).unwrap()
+    }
+
+    pub fn factory_address(&self) -> H160 {
+        Self::get_factory_address_from_id(&self.id)
+    }
+
     async fn create(
         provider: &EthProvider,
         factory: UniswapV2Factory,
@@ -119,12 +132,16 @@ impl Checkpoint<Vec<UniswapV2Pool>> {
     }
 
     async fn update(
-        mut self,
+        &mut self,
         provider: &EthProvider,
         factory: UniswapV2Factory,
         step: usize,
         current_block: u64,
-    ) -> Self {
+    ) {
+        if current_block <= self.last_block {
+            return;
+        }
+
         UniswapV2Pool::sync_pools_from_logs(
             (self.last_block + 1) as usize,
             current_block as usize,
@@ -150,80 +167,50 @@ impl Checkpoint<Vec<UniswapV2Pool>> {
         .await;
         self.data.extend(new_pools);
         self.last_block = current_block;
-        self
     }
 
-    pub async fn sync_uniswap_v2_pools(
-        provider: &EthProvider,
-        factory: UniswapV2Factory,
-        step: usize,
-    ) -> Self {
-        let id = format!("uniswap_v2_pools.{:?}", factory.address);
+    pub async fn get(provider: &EthProvider, factory: UniswapV2Factory, step: usize) -> Self {
+        let id = Self::id(&factory.address);
         let current_block = provider.get_block_number().await;
         let checkpoint = match Self::load_data(&id) {
             None => Self::create(provider, factory, &id, step, current_block).await,
-            Some(c) => c.update(provider, factory, step, current_block).await,
+            Some(mut c) => {
+                c.update(provider, factory, step, current_block).await;
+                c
+            }
         };
         checkpoint.save_data();
         checkpoint
     }
-}
 
-impl Checkpoint<HashMap<H160, U256>> {
-    pub async fn sync_uniswap_v2_pools_eth_value(
-        provider: &EthProvider,
-        factory: UniswapV2Factory,
-        step: usize,
-    ) -> Checkpoint<HashMap<H160, U256>> {
-        let id = format!("uniswap_v2_pools_eth_value.{:?}", factory.address);
+    pub async fn sync(mut self, provider: &EthProvider) {
+        let factory = UniswapV2Factory::new(self.factory_address(), 300);
         let current_block = provider.get_block_number().await;
-        let factory_addresses = vec![factory.address];
-        let weth = H160::from_str("0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2").unwrap();
-        let checkpoint = match Self::load_data(&id) {
-            // Get all pairs from factory if no checkpoint
-            None => {
-                let pairs = Checkpoint::<Vec<H160>>::sync_uniswap_v2_pair_addresses(
-                    provider, factory, step,
-                )
-                .await;
-                let weth_values = get_weth_value_in_pool_concurrent(
-                    &pairs.data,
-                    &factory_addresses,
-                    weth,
-                    U256::exp10(18),
-                    100,
-                    provider.http.clone(),
-                )
-                .await;
-                Self::new(current_block, weth_values, &id)
-            }
+        self.update(provider, factory, 100, current_block).await;
+        self.save_data()
+    }
 
-            // Continue from last synced block and get the rest from the logs
-            Some(mut checkpoint) => {
-                let new_pairs = factory
-                    .get_pair_addresses_from_logs_concurrent(
-                        checkpoint.last_block as usize,
-                        current_block as usize,
-                        step,
-                        provider.http.clone(),
-                    )
-                    .await;
-                let weth_values = get_weth_value_in_pool_concurrent(
-                    &new_pairs,
-                    &factory_addresses,
-                    weth,
-                    U256::exp10(18),
-                    100,
-                    provider.http.clone(),
-                )
-                .await;
-                checkpoint.data.extend(weth_values);
-                checkpoint.last_block = current_block;
-                checkpoint
-            }
-        };
-        checkpoint.save_data();
-        checkpoint
+    pub async fn sync_eth_value(
+        mut self,
+        provider: &EthProvider,
+        factory_addresses: &[H160],
+        weth: H160,
+        weth_threshold: U256,
+    ) {
+        let pool_addresses: Vec<H160> = self.data.iter().map(|p| p.address).collect();
+        let weth_values = get_weth_value_in_pool_concurrent(
+            &pool_addresses,
+            factory_addresses,
+            weth,
+            weth_threshold,
+            100,
+            provider.http.clone(),
+        )
+        .await;
+        for pool in &mut self.data {
+            pool.eth_value = *weth_values.get(&pool.address).ok_or(U256::zero()).unwrap();
+        }
+        self.save_data();
     }
 }
 
@@ -245,8 +232,7 @@ mod tests {
         let provider = EthProvider::new().await;
         let book = AddressBook::new();
         let factory: UniswapV2Factory = UniswapV2Factory::new(book.mainnet.uniswap_v2.factory, 300);
-        let pools =
-            Checkpoint::<Vec<UniswapV2Pool>>::sync_uniswap_v2_pools(&provider, factory, 100).await;
+        let pools = Checkpoint::<Vec<UniswapV2Pool>>::get(&provider, factory, 100).await;
         // Randomly choose 100 elements
         let mut rng = thread_rng();
         let random_pools: Vec<_> = pools
