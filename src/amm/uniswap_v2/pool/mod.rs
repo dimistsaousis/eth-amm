@@ -23,6 +23,7 @@ pub struct UniswapV2Pool {
     pub reserve_0: u128,
     pub reserve_1: u128,
     pub fee: u32,
+    pub eth_value: U256,
 }
 
 impl UniswapV2Pool {
@@ -36,6 +37,7 @@ impl UniswapV2Pool {
         reserve_0: u128,
         reserve_1: u128,
         fee: u32,
+        eth_value: U256,
     ) -> UniswapV2Pool {
         UniswapV2Pool {
             address,
@@ -46,6 +48,7 @@ impl UniswapV2Pool {
             reserve_0,
             reserve_1,
             fee,
+            eth_value,
         }
     }
 
