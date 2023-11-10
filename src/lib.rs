@@ -1,3 +1,4 @@
+pub mod address_book;
 pub mod amm;
 pub mod arithmetic;
 pub mod checkpoint;
