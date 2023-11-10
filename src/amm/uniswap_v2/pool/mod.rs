@@ -5,6 +5,7 @@ use crate::{
     arithmetic::{div_uu, q64_to_f64, U128_0X10000000000000000},
     contract::{IErc20, IUniswapV2Pair},
 };
+use core::panic;
 use ethers::{
     providers::Middleware,
     types::{H160, U256},
@@ -154,12 +155,13 @@ impl UniswapV2Pool {
         numerator / denominator
     }
 
-    pub fn get_token_out(&self, token_in: H160) -> H160 {
-        if self.token_a == token_in {
-            self.token_b
-        } else {
-            self.token_a
+    pub fn get_token_out(&self, token_in: &H160) -> H160 {
+        if &self.token_a == token_in {
+            return self.token_b;
+        } else if &self.token_b == token_in {
+            return self.token_a;
         }
+        panic!("Invalid token");
     }
 
     pub async fn get_token_decimals<M: Middleware>(&mut self, middleware: Arc<M>) -> (u8, u8) {
@@ -185,6 +187,15 @@ impl UniswapV2Pool {
             return self.reserve_1;
         }
         0
+    }
+
+    pub fn get_decimals_for_token(&self, token: H160) -> u8 {
+        if self.token_a == token {
+            return self.token_a_decimals;
+        } else if self.token_b == token {
+            return self.token_b_decimals;
+        }
+        panic!("Invalid token")
     }
 }
 
