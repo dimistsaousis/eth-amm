@@ -3,7 +3,7 @@ use crate::{concurrent::run_concurrent, contract::GetUniswapV2PoolDataBatchReque
 use ethers::{
     abi::{ParamType, Token},
     providers::Middleware,
-    types::{Bytes, H160},
+    types::{Bytes, H160, U256},
 };
 use indicatif::ProgressBar;
 use std::sync::{Arc, Mutex};
@@ -59,6 +59,7 @@ pub async fn get_amm_data_batch_request<M: Middleware>(
                     reserve_0: tup[4].to_owned().into_uint().unwrap().as_u128(),
                     reserve_1: tup[5].to_owned().into_uint().unwrap().as_u128(),
                     fee,
+                    eth_value: U256::zero(),
                 };
                 pools.push(pool);
             }
