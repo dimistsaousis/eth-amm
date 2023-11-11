@@ -183,32 +183,27 @@ impl Checkpoint<Vec<UniswapV2Pool>> {
         checkpoint
     }
 
-    pub async fn sync(mut self, provider: &EthProvider) {
+    pub async fn sync(&mut self, provider: &EthProvider) {
         let factory = UniswapV2Factory::new(self.factory_address(), 300);
         let current_block = provider.get_block_number().await;
         self.update(provider, factory, 100, current_block).await;
         self.save_data()
     }
 
-    pub async fn sync_eth_value(
-        mut self,
-        provider: &EthProvider,
-        factory_addresses: &[H160],
-        weth: H160,
-        weth_threshold: U256,
-    ) {
+    pub async fn sync_eth_value(&mut self, provider: &EthProvider, weth: H160, threshold: U256) {
+        let factory_addresses = vec![self.factory_address()];
         let pool_addresses: Vec<H160> = self.data.iter().map(|p| p.address).collect();
         let weth_values = get_weth_value_in_pool_concurrent(
             &pool_addresses,
-            factory_addresses,
+            &factory_addresses,
             weth,
-            weth_threshold,
+            threshold,
             100,
             provider.http.clone(),
         )
         .await;
         for pool in &mut self.data {
-            pool.eth_value = *weth_values.get(&pool.address).ok_or(U256::zero()).unwrap();
+            pool.eth_value = *weth_values.get(&pool.address).unwrap_or(&U256::zero());
         }
         self.save_data();
     }
