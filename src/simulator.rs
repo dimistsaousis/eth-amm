@@ -2,19 +2,51 @@ use crate::{
     amm::uniswap_v2::pool::UniswapV2Pool,
     contract::{SimulatorV1, SwapParams},
 };
+use csv::Writer;
 use ethers::{
     abi::{ParamType, Token},
     providers::Middleware,
     types::{Bytes, H160, U256},
 };
+use serde::Serialize;
 use std::sync::Arc;
 
+#[derive(Serialize)]
 pub struct Simulation {
     pub token: H160,
     pub path: Vec<UniswapV2Pool>,
     pub amount_in: U256,
     pub amount_out: U256,
     pub epsilon: U256,
+}
+
+pub fn write_simulations_to_csv(simulations: Vec<Simulation>, file_path: &str) {
+    let mut wtr = Writer::from_path(file_path).unwrap();
+    wtr.write_record(&[
+        "token",
+        "path",
+        "amount_in",
+        "amount_out",
+        "epsilon",
+        "profit",
+    ])
+    .unwrap();
+    for sim in simulations {
+        let token = format!("{:?}", sim.token);
+        let path = sim
+            .path
+            .iter()
+            .map(|p| format!("{:?}", p.address))
+            .collect::<Vec<_>>()
+            .join(", ");
+        let amount_in = sim.amount_in.to_string();
+        let amount_out = sim.amount_out.to_string();
+        let epsilon = sim.epsilon.to_string();
+        let profit = sim.profit().to_string();
+        wtr.write_record(&[token, path, amount_in, amount_out, epsilon, profit])
+            .unwrap();
+    }
+    wtr.flush().unwrap();
 }
 
 impl SwapParams {
@@ -50,6 +82,13 @@ impl Simulation {
         };
         simulation.get_best_amount();
         simulation
+    }
+
+    pub fn profit(&self) -> U256 {
+        if self.amount_in < self.amount_out {
+            return self.amount_out - self.amount_in;
+        }
+        U256::zero()
     }
 
     fn find_local_maximum<F>(mut low: f64, mut high: f64, epsilon: f64, mut f: F) -> (f64, usize)
@@ -209,5 +248,35 @@ mod tests {
         assert!(simulation.amount_in < simulation.amount_out);
         simulation.reversed();
         assert!(simulation.amount_in > simulation.amount_out);
+    }
+
+    #[tokio::test]
+    async fn test_simulate_swap_rogue() {
+        let SetupResult(provider, _, book) = setup().await;
+        let path = vec![
+            UniswapV2Pool::from_address(
+                provider.http.clone(),
+                book.mainnet.uniswap_v2.pairs["weth"]["usdt"],
+                300,
+            )
+            .await,
+            UniswapV2Pool::from_address(
+                provider.http.clone(),
+                book.mainnet.uniswap_v2.pairs["usdt"]["usd_old"],
+                300,
+            )
+            .await,
+            UniswapV2Pool::from_address(
+                provider.http.clone(),
+                book.mainnet.uniswap_v2.pairs["usd_old"]["weth"],
+                300,
+            )
+            .await,
+        ];
+        let sim = Simulation::new(book.mainnet.erc20["weth"], path, U256::exp10(14));
+        let amount_out = sim
+            .simulate_swap(provider.http.clone(), sim.amount_in)
+            .await;
+        assert_eq!(amount_out, sim.amount_out);
     }
 }
