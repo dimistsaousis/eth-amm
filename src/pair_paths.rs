@@ -1,8 +1,6 @@
-use std::collections::{HashMap, HashSet};
-
-use ethers::types::H160;
-
 use crate::amm::uniswap_v2::pool::UniswapV2Pool;
+use ethers::types::H160;
+use std::collections::{HashMap, HashSet};
 
 pub fn get_token_to_pool_map(pools: Vec<UniswapV2Pool>) -> HashMap<H160, Vec<UniswapV2Pool>> {
     let mut pools_by_token_address: HashMap<H160, Vec<UniswapV2Pool>> = HashMap::new();
