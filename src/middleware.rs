@@ -25,8 +25,8 @@ impl EthProvider {
     }
 
     pub async fn new_alchemy() -> EthProvider {
-        let rpc_endpoint = std::env::var("NETWORK_RPC").expect("Could not load env `NETWORK_RPC`");
-        let wss_endpoint = std::env::var("NETWORK_WSS").expect("Could not load env `NETWORK_WSS`");
+        let rpc_endpoint = std::env::var("ALCHEMY_RPC").expect("Could not load env `ALCHEMY_RPC`");
+        let wss_endpoint = std::env::var("ALCHEMY_WSS").expect("Could not load env `ALCHEMY_WSS`");
         Self::new(&rpc_endpoint, &wss_endpoint).await
     }
 
