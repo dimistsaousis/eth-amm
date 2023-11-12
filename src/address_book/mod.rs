@@ -17,6 +17,7 @@ pub struct Network {
 #[derive(Debug, Deserialize)]
 pub struct UniswapV2 {
     pub factory: H160,
+    pub router: H160,
     pub pairs: HashMap<String, HashMap<String, H160>>,
 }
 
