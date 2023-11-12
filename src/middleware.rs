@@ -9,30 +9,30 @@ use ethers::{
 
 pub struct EthProvider {
     pub http: Arc<Provider<Http>>,
-    pub wss: Arc<Provider<Ws>>,
+    pub http_endpoint: String,
+    pub wss_endpoint: String,
 }
 
 impl EthProvider {
-    async fn new(rpc_endpoint: &str, wss_endpoint: &str) -> EthProvider {
-        let http = Arc::new(Provider::<Http>::try_from(rpc_endpoint).unwrap());
-        let wss = Arc::new(
-            Provider::<Ws>::connect(wss_endpoint)
-                .await
-                .expect("Could not connect to web socket."),
-        );
-        EthProvider { http, wss }
+    async fn new(http_endpoint: String, wss_endpoint: String) -> EthProvider {
+        let http = Arc::new(Provider::<Http>::try_from(&http_endpoint).unwrap());
+        EthProvider {
+            http,
+            http_endpoint,
+            wss_endpoint,
+        }
     }
 
     pub async fn new_alchemy() -> EthProvider {
-        let rpc_endpoint = std::env::var("ALCHEMY_RPC").expect("Could not load env `ALCHEMY_RPC`");
+        let http_endpoint = std::env::var("ALCHEMY_RPC").expect("Could not load env `ALCHEMY_RPC`");
         let wss_endpoint = std::env::var("ALCHEMY_WSS").expect("Could not load env `ALCHEMY_WSS`");
-        Self::new(&rpc_endpoint, &wss_endpoint).await
+        Self::new(http_endpoint, wss_endpoint).await
     }
 
     pub async fn new_ganache() -> EthProvider {
-        let rpc_endpoint = "http://localhost:8545";
-        let wss_endpoint = "wss://localhost:8545";
-        Self::new(&rpc_endpoint, &wss_endpoint).await
+        let rpc_endpoint = "http://localhost:8545".to_string();
+        let wss_endpoint = "wss://localhost:8545".to_string();
+        Self::new(rpc_endpoint, wss_endpoint).await
     }
 
     pub fn clone(self) -> Arc<EthProvider> {
@@ -58,6 +58,14 @@ impl EthProvider {
             .await
             .expect("Could not get chain id")
             .as_u64()
+    }
+
+    pub async fn get_wss(&self) -> Arc<Provider<Ws>> {
+        Arc::new(
+            Provider::<Ws>::connect(&self.wss_endpoint)
+                .await
+                .expect("Could not connect to web socket."),
+        )
     }
 
     pub fn get_signer_middleware(
