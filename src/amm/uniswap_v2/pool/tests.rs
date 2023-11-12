@@ -6,7 +6,7 @@ struct SetupResult(UniswapV2Pool, EthProvider, AddressBook);
 async fn setup() -> SetupResult {
     dotenv::dotenv().ok();
     let book = AddressBook::new();
-    let provider = EthProvider::new().await;
+    let provider = EthProvider::new_alchemy().await;
     let pool = UniswapV2Pool::from_address(
         provider.http.clone(),
         book.mainnet.uniswap_v2.pairs["weth"]["usdc"],

@@ -224,7 +224,7 @@ mod tests {
     #[tokio::test]
     async fn test_checkpoint_sync_pools_from_logs() {
         dotenv::dotenv().ok();
-        let provider = EthProvider::new().await;
+        let provider = EthProvider::new_alchemy().await;
         let book = AddressBook::new();
         let factory: UniswapV2Factory = UniswapV2Factory::new(book.mainnet.uniswap_v2.factory, 300);
         let pools = Checkpoint::<Vec<UniswapV2Pool>>::get(&provider, factory, 100).await;

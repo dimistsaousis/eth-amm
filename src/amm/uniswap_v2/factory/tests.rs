@@ -7,7 +7,7 @@ async fn setup() -> SetupResult {
     // Create and return the necessary test
     dotenv::dotenv().ok();
     let book = AddressBook::new();
-    let provider = EthProvider::new().await;
+    let provider = EthProvider::new_alchemy().await;
     let factory = UniswapV2Factory::new(book.mainnet.uniswap_v2.factory, 300);
     SetupResult(factory, provider, book)
 }

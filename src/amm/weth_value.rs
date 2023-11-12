@@ -115,7 +115,7 @@ mod tests {
     #[tokio::test]
     async fn test_get_weth_value_in_pool_concurrent() {
         dotenv::dotenv().ok();
-        let provider = EthProvider::new().await;
+        let provider = EthProvider::new_alchemy().await;
         let book = AddressBook::new();
         let weth_threshold = U256::from(10).pow(U256::from(18));
         let pool_addresses = vec![book.mainnet.uniswap_v2.pairs["weth"]["usdc"]];

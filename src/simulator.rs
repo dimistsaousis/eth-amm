@@ -188,7 +188,7 @@ mod tests {
     async fn setup() -> SetupResult {
         // Create and return the necessary test
         dotenv::dotenv().ok();
-        let provider = EthProvider::new().await;
+        let provider = EthProvider::new_alchemy().await;
         let book = AddressBook::new();
         let factory: UniswapV2Factory = UniswapV2Factory::new(book.mainnet.uniswap_v2.factory, 300);
         let weth_usdc = factory
