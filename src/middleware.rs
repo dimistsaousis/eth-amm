@@ -68,13 +68,17 @@ impl EthProvider {
         )
     }
 
-    pub fn get_signer_middleware(
+    pub async fn get_signer_middleware(
         &self,
         private_key: &str,
     ) -> Arc<SignerMiddleware<Arc<Provider<Http>>, LocalWallet>> {
         let wallet = private_key
             .parse::<LocalWallet>()
             .expect("Could not parse private key.");
-        Arc::new(SignerMiddleware::new(self.http.clone(), wallet))
+        Arc::new(
+            SignerMiddleware::new_with_provider_chain(self.http.clone(), wallet)
+                .await
+                .unwrap(),
+        )
     }
 }
