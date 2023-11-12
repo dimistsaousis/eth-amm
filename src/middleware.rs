@@ -14,17 +14,31 @@ pub struct EthProvider {
 }
 
 impl EthProvider {
-    pub async fn new() -> EthProvider {
-        let rpc_endpoint = std::env::var("NETWORK_RPC").expect("Could not load env `NETWORK_RPC`");
+    async fn new(rpc_endpoint: &str, wss_endpoint: &str) -> EthProvider {
         let http = Arc::new(Provider::<Http>::try_from(rpc_endpoint).unwrap());
-
-        let wss_endpoint = std::env::var("NETWORK_WSS").expect("Could not load env `NETWORK_WSS`");
         let wss = Arc::new(
             Provider::<Ws>::connect(wss_endpoint)
                 .await
                 .expect("Could not connect to web socket."),
         );
         EthProvider { http, wss }
+    }
+
+    pub async fn new_alchemy() -> EthProvider {
+        let rpc_endpoint = std::env::var("NETWORK_RPC").expect("Could not load env `NETWORK_RPC`");
+        let wss_endpoint = std::env::var("NETWORK_WSS").expect("Could not load env `NETWORK_WSS`");
+        Self::new(&rpc_endpoint, &wss_endpoint).await
+    }
+
+    pub async fn new_ganache() -> EthProvider {
+        let rpc_endpoint = "http://localhost:8545";
+        let wss_endpoint = "wss://localhost:8545";
+        Self::new(&rpc_endpoint, &wss_endpoint).await
+    }
+
+    pub fn clone(self) -> Arc<EthProvider> {
+        let provider = Arc::new(self);
+        provider.clone()
     }
 
     pub async fn get_balance(&self, address: H160) -> U256 {
