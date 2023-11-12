@@ -1,7 +1,6 @@
-use std::{str::FromStr, sync::Arc};
+use std::sync::Arc;
 
 use ethers::{
-    abi::Address,
     middleware::SignerMiddleware,
     providers::{Http, Middleware, Provider, Ws},
     signers::LocalWallet,
