@@ -17,6 +17,7 @@ pub struct Simulation {
     pub path: Vec<UniswapV2Pool>,
     pub amount_in: U256,
     pub amount_out: U256,
+    pub amount_path: Vec<U256>,
     pub epsilon: U256,
 }
 
@@ -27,7 +28,7 @@ pub fn write_simulations_to_csv(simulations: Vec<Simulation>, file_path: &str) {
         "path",
         "amount_in",
         "amount_out",
-        "epsilon",
+        "amount_path",
         "profit",
     ])
     .unwrap();
@@ -41,9 +42,9 @@ pub fn write_simulations_to_csv(simulations: Vec<Simulation>, file_path: &str) {
             .join(", ");
         let amount_in = sim.amount_in.to_string();
         let amount_out = sim.amount_out.to_string();
-        let epsilon = sim.epsilon.to_string();
+        let amount_path = format!("{:?}", sim.amount_path);
         let profit = sim.profit().to_string();
-        wtr.write_record(&[token, path, amount_in, amount_out, epsilon, profit])
+        wtr.write_record(&[token, path, amount_in, amount_out, amount_path, profit])
             .unwrap();
     }
     wtr.flush().unwrap();
@@ -78,6 +79,7 @@ impl Simulation {
             path,
             amount_in: U256::zero(),
             amount_out: U256::zero(),
+            amount_path: vec![U256::zero()],
             epsilon,
         };
         simulation.get_best_amount();
@@ -112,26 +114,28 @@ impl Simulation {
         ((low + high) / 2.0, step)
     }
 
-    pub fn simulate_swap_offline(&self, amount: U256) -> U256 {
+    pub fn simulate_swap_offline(&self, amount: U256) -> (U256, Vec<U256>) {
         let mut token = self.token;
         let mut amount = amount;
+        let mut amounts = vec![amount];
         for pool in &self.path {
             amount = pool.simulate_swap(token, amount);
             token = pool.get_token_out(&token);
+            amounts.push(amount);
         }
-        amount
+        (amount, amounts)
     }
 
     pub fn get_best_amount(&mut self) {
         let f = |amount: f64| {
-            let amount_out = self.simulate_swap_offline(U256::from(amount as u128));
+            let (amount_out, _) = self.simulate_swap_offline(U256::from(amount as u128));
             amount_out.as_u128() as f64 - amount
         };
         let (amount, _) =
             Self::find_local_maximum(0.0, 10f64.powf(20.0), self.epsilon.as_u128() as f64, f);
         let amount = U256::from(amount as u128);
         self.amount_in = amount;
-        self.amount_out = self.simulate_swap_offline(amount);
+        (self.amount_out, self.amount_path) = self.simulate_swap_offline(amount);
     }
 
     pub async fn simulate_swap<M: Middleware>(&self, middleware: Arc<M>, amount: U256) -> U256 {
@@ -237,7 +241,7 @@ mod tests {
         let r0 = simulation
             .simulate_swap(provider.http, U256::exp10(18))
             .await;
-        let r1 = simulation.simulate_swap_offline(U256::exp10(18));
+        let (r1, _) = simulation.simulate_swap_offline(U256::exp10(18));
         assert_eq!(r0, r1);
     }
     #[tokio::test]
