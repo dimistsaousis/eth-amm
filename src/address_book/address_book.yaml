@@ -18,3 +18,4 @@ mainnet:
         usd_old: 0x582E3DA39948C6339433008703211aD2c13EB2ac
       usdt:
         usd_old: 0x50b6071561f068963Bcfe2B341126cd6aCcaFAFb
+    router: 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D
