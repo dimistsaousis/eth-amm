@@ -4,3 +4,7 @@ Cargo.lock
 .vscode
 /src/checkpoint/data/
 /cache
+/node_modules
+hardhat.config.js
+package-lock.json
+package.json
