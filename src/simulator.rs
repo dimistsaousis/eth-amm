@@ -1,6 +1,7 @@
 use crate::{
     amm::uniswap_v2::pool::UniswapV2Pool,
-    contract::{SimulatorV1, SwapParams},
+    contract::{IErc20, IUniswapRouter, SimulatorV1, SwapParams},
+    middleware::EthProvider,
 };
 use csv::Writer;
 use ethers::{
@@ -8,6 +9,7 @@ use ethers::{
     providers::Middleware,
     types::{Bytes, H160, U256},
 };
+use eyre::Result;
 use serde::Serialize;
 use std::sync::Arc;
 
@@ -112,6 +114,45 @@ impl Simulation {
         }
 
         ((low + high) / 2.0, step)
+    }
+
+    pub async fn swap_using_router(
+        &self,
+        router_address: H160,
+        provider: EthProvider,
+        public_key: H160,
+        private_key: &str,
+    ) -> Result<U256> {
+        let erc20_path = self.get_erc20_path();
+        let last_token = IErc20::new(erc20_path.last().unwrap().clone(), provider.http.clone());
+        let current_balance = last_token.balance_of(public_key).await?;
+        let router = IUniswapRouter::new(
+            router_address,
+            provider.get_signer_middleware(private_key).await,
+        );
+        let amount_out_min = U256::zero();
+        let deadline = U256::from(
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)?
+                .as_secs()
+                + 10,
+        );
+        router
+            .swap_exact_eth_for_tokens(amount_out_min, erc20_path, public_key, deadline)
+            .value(self.amount_in)
+            .send()
+            .await?;
+        Ok(last_token.balance_of(public_key).await? - current_balance)
+    }
+
+    pub fn get_erc20_path(&self) -> Vec<H160> {
+        let mut token = self.token;
+        let mut tokens = vec![];
+        for pair in &self.path {
+            tokens.push(token.clone());
+            token = pair.get_token_out(&token);
+        }
+        tokens
     }
 
     pub fn simulate_swap_offline(&self, amount: U256) -> (U256, Vec<U256>) {
