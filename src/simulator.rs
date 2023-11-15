@@ -89,6 +89,33 @@ impl Simulation {
         simulation
     }
 
+    pub async fn new_from_erc20_path(
+        provider: Arc<EthProvider>,
+        factory_address: H160,
+        path: Vec<H160>,
+        epsilon: U256,
+    ) -> Self {
+        let factory = UniswapV2Factory::new(factory_address, 300);
+        let mut futures = vec![];
+        for i in 0..(path.len() - 1) {
+            futures.push(factory.get_pair_address(
+                provider.http.clone(),
+                path.as_slice()[i],
+                path.as_slice()[i + 1],
+            ))
+        }
+        let pairs = future::join_all(futures).await;
+        let mut futures = vec![];
+        for pair in pairs {
+            futures.push(UniswapV2Pool::from_address(
+                provider.http.clone(),
+                pair,
+                300,
+            ))
+        }
+        Self::new(path.as_slice()[0], future::join_all(futures).await, epsilon)
+    }
+
     pub fn profit(&self) -> U256 {
         if self.amount_in < self.amount_out {
             return self.amount_out - self.amount_in;
@@ -342,5 +369,23 @@ mod tests {
                 book.mainnet.erc20["weth"],
             ]
         )
+    }
+
+    #[tokio::test]
+    async fn test_new_from_path() {
+        let SetupResult(provider, simulation, book) = setup().await;
+        let simu = Simulation::new_from_erc20_path(
+            provider.clone(),
+            book.mainnet.uniswap_v2.factory,
+            vec![
+                book.mainnet.erc20["weth"],
+                book.mainnet.erc20["usdc"],
+                book.mainnet.erc20["matic"],
+                book.mainnet.erc20["weth"],
+            ],
+            U256::exp10(4),
+        )
+        .await;
+        assert_eq!(simu.path, simulation.path);
     }
 }
