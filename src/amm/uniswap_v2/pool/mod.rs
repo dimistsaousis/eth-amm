@@ -26,6 +26,12 @@ pub struct UniswapV2Pool {
     pub eth_value: U256,
 }
 
+impl PartialEq for UniswapV2Pool {
+    fn eq(&self, other: &UniswapV2Pool) -> bool {
+        self.address == other.address
+    }
+}
+
 impl UniswapV2Pool {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
