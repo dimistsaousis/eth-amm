@@ -22,12 +22,12 @@ async fn test_get_pair_addresses_from_factory_concurrent_success() {
 }
 
 #[tokio::test]
-#[should_panic]
 async fn test_get_pair_addresses_from_factory_concurrent_failure() {
     let SetupResult(factory, provider, _) = setup().await;
-    factory
+    let result = factory
         .get_pair_addresses_from_factory(10_000_000, 10_000_010, 1, provider.http)
         .await;
+    assert_eq!(result.len(), 0);
 }
 
 #[tokio::test]
