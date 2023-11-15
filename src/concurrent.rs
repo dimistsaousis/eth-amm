@@ -27,7 +27,7 @@ pub async fn run_concurrent<'a, F, Fut, V, M>(
 ) -> Vec<V>
 where
     F: Fn(usize, usize, Arc<M>, Option<Arc<Mutex<ProgressBar>>>) -> Fut,
-    Fut: Future<Output = Vec<V>> + Send + 'a,
+    Fut: Future<Output = Result<Vec<V>, BatchError>> + Send + 'a,
     V: Send + 'a,
     M: Middleware + 'a,
 {
@@ -44,11 +44,30 @@ where
             Some(shared_pb.clone()),
         ));
     }
-    future::join_all(futures)
-        .await
-        .into_iter()
-        .flatten()
-        .collect()
+    let results = future::join_all(futures).await;
+    let mut combined_results = vec![];
+
+    for result in results {
+        match result {
+            Ok(data) => combined_results.extend(data),
+            Err(err) => {
+                println!(
+                    "Failed to get results from {} to end {} trying with step 1.",
+                    err.start, err.end
+                );
+                let futures = (err.start..err.end)
+                    .into_iter()
+                    .map(|idx| func(idx, idx, middleware.clone(), Some(shared_pb.clone())));
+                let results = future::join_all(futures).await;
+                for result in results {
+                    if let Ok(result) = result {
+                        combined_results.extend(result);
+                    }
+                }
+            }
+        }
+    }
+    combined_results
 }
 
 pub async fn run_concurrent_hash<'a, F, Fut, K, V, M>(

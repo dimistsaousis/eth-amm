@@ -1,5 +1,5 @@
 use crate::amm::uniswap_v2::factory::UniswapV2Factory;
-use crate::concurrent::run_concurrent;
+use crate::concurrent::{run_concurrent, BatchError};
 use crate::contract::PairCreatedFilter;
 use ethers::abi::RawLog;
 use ethers::prelude::EthEvent;
@@ -24,7 +24,7 @@ impl UniswapV2Factory {
         end: usize,
         middleware: Arc<M>,
         progress_bar: Option<Arc<Mutex<ProgressBar>>>,
-    ) -> Vec<H160> {
+    ) -> Result<Vec<H160>, BatchError> {
         let logs = middleware
             .get_logs(
                 &Filter::new()
@@ -34,18 +34,19 @@ impl UniswapV2Factory {
                     .to_block(BlockNumber::Number(U64([end as u64]))),
             )
             .await
-            .expect("Failed to decode pair created events");
+            .map_err(|_| BatchError::new(start, end))?;
 
         let mut addresses = vec![];
         for log in logs {
             let pair_created_event: PairCreatedFilter =
-                PairCreatedFilter::decode_log(&RawLog::from(log)).expect("Failed to decode data");
+                PairCreatedFilter::decode_log(&RawLog::from(log))
+                    .map_err(|_| BatchError::new(start, end))?;
             addresses.push(pair_created_event.pair);
         }
         if let Some(pb) = progress_bar {
             pb.lock().unwrap().inc(end as u64 - start as u64);
         }
-        addresses
+        Ok(addresses)
     }
 
     pub async fn get_pair_addresses_from_logs_concurrent<'a, M: Middleware + 'a>(

@@ -1,5 +1,8 @@
 use super::UniswapV2Pool;
-use crate::{concurrent::run_concurrent, contract::GetUniswapV2PoolDataBatchRequest};
+use crate::{
+    concurrent::{run_concurrent, BatchError},
+    contract::GetUniswapV2PoolDataBatchRequest,
+};
 use ethers::{
     abi::{ParamType, Token},
     providers::Middleware,
@@ -13,19 +16,21 @@ pub async fn get_amm_data_batch_request<M: Middleware>(
     middleware: Arc<M>,
     fee: u32,
     progress_bar: Option<Arc<Mutex<ProgressBar>>>,
-) -> Vec<UniswapV2Pool> {
+    start: usize,
+    end: usize,
+) -> Result<Vec<UniswapV2Pool>, BatchError> {
     let token_addresses = addresses
         .into_iter()
         .map(|&address| Token::Address(address))
         .collect();
     let constructor_args = Token::Tuple(vec![Token::Array(token_addresses)]);
     let deployer = GetUniswapV2PoolDataBatchRequest::deploy(middleware.clone(), constructor_args)
-        .expect("Failed to deply GetUniswapV2PoolDataBatchRequest");
+        .map_err(|_| BatchError::new(start, end))?;
 
     let return_data: Bytes = deployer
         .call_raw()
         .await
-        .expect("Failed to call GetUniswapV2PoolDataBatchRequest.");
+        .map_err(|_| BatchError::new(start, end))?;
     let return_data_tokens = ethers::abi::decode(
         &[ParamType::Array(Box::new(ParamType::Tuple(vec![
             ParamType::Address,   // token a
@@ -37,7 +42,7 @@ pub async fn get_amm_data_batch_request<M: Middleware>(
         ])))],
         &return_data,
     )
-    .expect("Failed to decode GetUniswapV2PoolDataBatchRequest");
+    .map_err(|_| BatchError::new(start, end))?;
     let pool_tokens = return_data_tokens
         .into_iter()
         .next()
@@ -67,7 +72,7 @@ pub async fn get_amm_data_batch_request<M: Middleware>(
     if let Some(pb) = progress_bar {
         pb.lock().unwrap().inc(addresses.len() as u64);
     }
-    pools
+    Ok(pools)
 }
 
 pub async fn get_uniswap_v2_pool_data_concurrent<M: Middleware>(
@@ -78,7 +83,14 @@ pub async fn get_uniswap_v2_pool_data_concurrent<M: Middleware>(
 ) -> Vec<UniswapV2Pool> {
     let batch_func =
         |start: usize, end: usize, middleware: Arc<M>, pb: Option<Arc<Mutex<ProgressBar>>>| {
-            get_amm_data_batch_request(&addresses[start..end], middleware.clone(), fee, pb)
+            get_amm_data_batch_request(
+                &addresses[start..end],
+                middleware.clone(),
+                fee,
+                pb,
+                start,
+                end,
+            )
         };
     println!("Getting amm data for {} pairs", addresses.len());
     run_concurrent(0, addresses.len(), step, middleware, batch_func).await

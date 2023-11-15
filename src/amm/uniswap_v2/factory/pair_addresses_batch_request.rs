@@ -7,7 +7,10 @@ use ethers::{
 };
 use indicatif::ProgressBar;
 
-use crate::{concurrent::run_concurrent, contract::GetUniswapV2PairsBatchRequest};
+use crate::{
+    concurrent::{run_concurrent, BatchError},
+    contract::GetUniswapV2PairsBatchRequest,
+};
 
 use super::UniswapV2Factory;
 
@@ -18,7 +21,7 @@ impl UniswapV2Factory {
         end: usize,
         middleware: Arc<M>,
         progress_bar: Option<Arc<Mutex<ProgressBar>>>,
-    ) -> Vec<H160> {
+    ) -> Result<Vec<H160>, BatchError> {
         let mut pairs = vec![];
         let constructor_args = Token::Tuple(vec![
             Token::Uint(U256::from(start)),
@@ -27,17 +30,17 @@ impl UniswapV2Factory {
         ]);
 
         let deployer = GetUniswapV2PairsBatchRequest::deploy(middleware, constructor_args)
-            .expect("Failed to deploy UniswapV2PairsBatchRequest contract");
+            .map_err(|_| BatchError::new(start, end))?;
         let return_data: Bytes = deployer
             .call_raw()
             .await
-            .expect("Failed to call UniswapV2PairsBatchRequest contract");
+            .map_err(|_| BatchError::new(start, end))?;
 
         let return_data_tokens = ethers::abi::decode(
             &[ParamType::Array(Box::new(ParamType::Address))],
             &return_data,
         )
-        .expect("Failed to decode return data from UniswapV2PairsBatchRequest contract");
+        .map_err(|_| BatchError::new(start, end))?;
 
         for token_array in return_data_tokens {
             if let Some(arr) = token_array.into_array() {
@@ -53,7 +56,7 @@ impl UniswapV2Factory {
         if let Some(pb) = progress_bar {
             pb.lock().unwrap().inc(end as u64 - start as u64);
         }
-        pairs
+        Ok(pairs)
     }
 
     pub async fn get_pair_addresses_from_factory<'a, M: Middleware + 'a>(
