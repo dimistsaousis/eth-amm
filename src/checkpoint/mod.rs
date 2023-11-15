@@ -145,7 +145,7 @@ impl Checkpoint<Vec<UniswapV2Pool>> {
         UniswapV2Pool::sync_pools_from_logs(
             (self.last_block + 1) as usize,
             current_block as usize,
-            100,
+            step,
             &mut self.data,
             provider.http.clone(),
         )
@@ -227,7 +227,7 @@ mod tests {
         let provider = EthProvider::new_alchemy().await;
         let book = AddressBook::new();
         let factory: UniswapV2Factory = UniswapV2Factory::new(book.mainnet.uniswap_v2.factory, 300);
-        let pools = Checkpoint::<Vec<UniswapV2Pool>>::get(&provider, factory, 100).await;
+        let pools = Checkpoint::<Vec<UniswapV2Pool>>::get(&provider, factory, 10).await;
         // Randomly choose 100 elements
         let mut rng = thread_rng();
         let random_pools: Vec<_> = pools
