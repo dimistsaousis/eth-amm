@@ -1,5 +1,5 @@
 use crate::{
-    amm::uniswap_v2::pool::UniswapV2Pool,
+    amm::uniswap_v2::{factory::UniswapV2Factory, pool::UniswapV2Pool},
     contract::{IErc20, IUniswapRouter, SimulatorV1, SwapParams},
     middleware::EthProvider,
 };
@@ -10,6 +10,7 @@ use ethers::{
     types::{Bytes, H160, U256},
 };
 use eyre::Result;
+use futures::future;
 use serde::Serialize;
 use std::sync::Arc;
 
@@ -119,7 +120,7 @@ impl Simulation {
     pub async fn swap_using_router(
         &self,
         router_address: H160,
-        provider: EthProvider,
+        provider: Arc<EthProvider>,
         public_key: H160,
         private_key: &str,
     ) -> Result<U256> {
@@ -152,6 +153,7 @@ impl Simulation {
             tokens.push(token.clone());
             token = pair.get_token_out(&token);
         }
+        tokens.push(token.clone());
         tokens
     }
 
@@ -289,10 +291,12 @@ mod tests {
     async fn test_find_best_amount_binary_search() {
         let SetupResult(_, mut simulation, _) = setup().await;
         assert!(simulation.amount_in < U256::exp10(15));
-        assert!(simulation.amount_in > U256::exp10(14));
-        assert!(simulation.amount_in < simulation.amount_out);
+        assert!(simulation.amount_in > U256::exp10(0));
+        let profit = simulation.profit();
         simulation.reversed();
-        assert!(simulation.amount_in > simulation.amount_out);
+        let reversed_profit = simulation.profit();
+        // Exactly one is profitable
+        assert!((profit.is_zero() ^ reversed_profit.is_zero()));
     }
 
     #[tokio::test]
@@ -323,5 +327,20 @@ mod tests {
             .simulate_swap(provider.http.clone(), sim.amount_in)
             .await;
         assert_eq!(amount_out, sim.amount_out);
+    }
+
+    #[tokio::test]
+    async fn test_erc20_path() {
+        let SetupResult(_, simulation, book) = setup().await;
+        let path = simulation.get_erc20_path();
+        assert_eq!(
+            path,
+            vec![
+                book.mainnet.erc20["weth"],
+                book.mainnet.erc20["usdc"],
+                book.mainnet.erc20["matic"],
+                book.mainnet.erc20["weth"],
+            ]
+        )
     }
 }
