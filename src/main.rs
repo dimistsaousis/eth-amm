@@ -1,42 +1,78 @@
-use eth_amm::{
-    address_book::AddressBook,
-    amm::uniswap_v2::{factory::UniswapV2Factory, pool::UniswapV2Pool},
-    checkpoint::Checkpoint,
-    middleware::EthProvider,
-    pair_paths::{find_pool_paths, get_token_to_pool_map},
-    simulator::{write_simulations_to_csv, Simulation},
+use eth_amm::{address_book::AddressBook, middleware::EthProvider, simulator::Simulation};
+use ethers::{
+    abi::{Function, Param, ParamType, Token},
+    types::{Address, U256},
+    utils::hex,
 };
-use ethers::types::U256;
+use eyre::Result;
+use std::str::FromStr;
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<()> {
     dotenv::dotenv().ok();
-    let provider = EthProvider::new().await;
+    let provider = EthProvider::new_ganache().await.clone();
     let book = AddressBook::new();
-    let factory: UniswapV2Factory = UniswapV2Factory::new(book.mainnet.uniswap_v2.factory, 300);
-    let mut pools_checkpoint = Checkpoint::<Vec<UniswapV2Pool>>::get(&provider, factory, 100).await;
-    pools_checkpoint.sync(&provider).await;
-    // pools_checkpoint
-    //     .sync_eth_value(&provider, book.mainnet.erc20["weth"], U256::exp10(18))
-    //     .await;
-    let pools_before = pools_checkpoint.data.len();
-    let target_pools: Vec<UniswapV2Pool> = pools_checkpoint
-        .data
-        .into_iter()
-        .filter(|p| p.eth_value > U256::exp10(19))
-        .collect();
+    let public_address = Address::from_str("0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266")?;
+    let private_key = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
+
+    let path = vec![
+        book.mainnet.erc20["weth"],
+        book.mainnet.erc20["usdt"],
+        book.mainnet.erc20["usd_old"],
+        book.mainnet.erc20["weth"],
+    ];
+
+    let simu = Simulation::new_from_erc20_path(
+        provider.clone(),
+        book.mainnet.uniswap_v2.factory,
+        path,
+        U256::exp10(4),
+    )
+    .await;
+
     println!(
-        "From {} pools, filtered and got {}.",
-        pools_before,
-        target_pools.len()
+        "Best amount is {:?} with amount out {:?} and profit of {:?}",
+        simu.amount_in,
+        simu.amount_out,
+        simu.profit()
     );
-    let token_to_pool_map = get_token_to_pool_map(target_pools);
-    let weth = book.mainnet.erc20["weth"];
-    let paths = find_pool_paths(weth, token_to_pool_map, 4);
-    println!("Found {} possible paths", paths.len());
-    let mut simulations = vec![];
-    for path in paths {
-        simulations.push(Simulation::new(weth, path, U256::exp10(14)));
+
+    let amount_out = simu
+        .swap_using_router(
+            book.mainnet.uniswap_v2.router,
+            provider.clone(),
+            public_address,
+            private_key,
+        )
+        .await;
+    println!("{:?}",decode_revert_message("0x08c379a00000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000001a556e697377617056323a205452414e534645525f4641494c4544000000000000").unwrap());
+    println!("Swap yielded: {:?}", amount_out);
+
+    Ok(())
+}
+
+fn decode_revert_message(data: &str) -> Result<String, Box<dyn std::error::Error>> {
+    // Define the error function ABI
+    let error_function = Function {
+        name: "Error".to_owned(),
+        inputs: vec![Param {
+            name: "message".to_owned(),
+            kind: ParamType::String,
+            internal_type: None,
+        }],
+        constant: None,
+        outputs: vec![],
+        state_mutability: ethers::abi::StateMutability::NonPayable,
+    };
+
+    // Strip the '0x' prefix and get the bytes
+    let data = hex::decode(&data[2..])?;
+
+    // Decode the data
+    let tokens = error_function.decode_input(&data[4..])?; // skip first 4 bytes (method ID)
+    if let Some(Token::String(message)) = tokens.first() {
+        Ok(message.clone())
+    } else {
+        Err("Failed to decode error message".into())
     }
-    write_simulations_to_csv(simulations, "simulations.csv");
 }
