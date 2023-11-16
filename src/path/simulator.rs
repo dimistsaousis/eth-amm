@@ -86,7 +86,7 @@ mod tests {
         U256,
     ) {
         dotenv::dotenv().ok();
-        let local_provider = EthProvider::new_ganache().await;
+        let local_provider = EthProvider::new_local().await;
         let alchemy_provider = EthProvider::new_alchemy().await;
         let book = AddressBook::new();
         let path = vec![

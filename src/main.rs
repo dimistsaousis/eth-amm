@@ -6,7 +6,7 @@ use std::str::FromStr;
 #[tokio::main]
 async fn main() -> Result<()> {
     dotenv::dotenv().ok();
-    let provider = EthProvider::new_ganache().await.clone();
+    let provider = EthProvider::new_local().await.clone();
     let book = AddressBook::new();
     let public_address = Address::from_str("0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266")?;
     let private_key = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";

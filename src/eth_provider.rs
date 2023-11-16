@@ -6,6 +6,7 @@ use ethers::{
     signers::LocalWallet,
     types::{H160, U256},
 };
+use serde_json::json;
 
 pub struct EthProvider {
     pub http: Arc<Provider<Http>>,
@@ -23,16 +24,39 @@ impl EthProvider {
         }
     }
 
-    pub async fn new_alchemy() -> EthProvider {
-        let http_endpoint = std::env::var("ALCHEMY_RPC").expect("Could not load env `ALCHEMY_RPC`");
-        let wss_endpoint = std::env::var("ALCHEMY_WSS").expect("Could not load env `ALCHEMY_WSS`");
-        Self::new(http_endpoint, wss_endpoint).await
+    pub fn alchemy_rpc() -> String {
+        std::env::var("ALCHEMY_RPC").expect("Could not load env `ALCHEMY_RPC`")
     }
 
-    pub async fn new_ganache() -> EthProvider {
+    pub fn alchemy_wss() -> String {
+        std::env::var("ALCHEMY_WSS").expect("Could not load env `ALCHEMY_WSS`")
+    }
+
+    pub async fn new_alchemy() -> EthProvider {
+        Self::new(Self::alchemy_rpc(), Self::alchemy_wss()).await
+    }
+
+    pub async fn new_local() -> EthProvider {
         let rpc_endpoint = "http://localhost:8545".to_string();
         let wss_endpoint = "wss://localhost:8545".to_string();
         Self::new(rpc_endpoint, wss_endpoint).await
+    }
+
+    pub async fn reset_local_to_alchemy_fork(&self) {
+        let reset_payload = json!({
+            "jsonrpc": "2.0",
+            "method": "hardhat_reset",
+            "params": [{
+                "forking": {
+                    "jsonRpcUrl": Self::alchemy_rpc(),
+                }
+            }],
+            "id": 1
+        });
+        self.http
+            .request::<_, serde_json::Value>("hardhat_reset", reset_payload)
+            .await
+            .unwrap();
     }
 
     pub fn clone(self) -> Arc<EthProvider> {
