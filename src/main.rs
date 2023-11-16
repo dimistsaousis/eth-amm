@@ -1,9 +1,5 @@
 use eth_amm::{address_book::AddressBook, middleware::EthProvider, simulator::Simulation};
-use ethers::{
-    abi::{Function, Param, ParamType, Token},
-    types::{Address, U256},
-    utils::hex,
-};
+use ethers::types::{Address, U256};
 use eyre::Result;
 use std::str::FromStr;
 
@@ -45,34 +41,6 @@ async fn main() -> Result<()> {
             private_key,
         )
         .await;
-    println!("{:?}",decode_revert_message("0x08c379a00000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000001a556e697377617056323a205452414e534645525f4641494c4544000000000000").unwrap());
     println!("Swap yielded: {:?}", amount_out);
-
     Ok(())
-}
-
-fn decode_revert_message(data: &str) -> Result<String, Box<dyn std::error::Error>> {
-    // Define the error function ABI
-    let error_function = Function {
-        name: "Error".to_owned(),
-        inputs: vec![Param {
-            name: "message".to_owned(),
-            kind: ParamType::String,
-            internal_type: None,
-        }],
-        constant: None,
-        outputs: vec![],
-        state_mutability: ethers::abi::StateMutability::NonPayable,
-    };
-
-    // Strip the '0x' prefix and get the bytes
-    let data = hex::decode(&data[2..])?;
-
-    // Decode the data
-    let tokens = error_function.decode_input(&data[4..])?; // skip first 4 bytes (method ID)
-    if let Some(Token::String(message)) = tokens.first() {
-        Ok(message.clone())
-    } else {
-        Err("Failed to decode error message".into())
-    }
 }
