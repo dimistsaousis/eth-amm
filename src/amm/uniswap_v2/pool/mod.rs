@@ -125,8 +125,8 @@ impl UniswapV2Pool {
         q64_to_f64(self.calculate_price_64_x_64(base_token))
     }
 
-    pub fn simulate_swap(&self, token_in: H160, amount_in: U256) -> U256 {
-        if self.token_a == token_in {
+    pub fn simulate_swap(&self, token_in: &H160, amount_in: U256) -> U256 {
+        if &self.token_a == token_in {
             self.get_amount_out(
                 amount_in,
                 U256::from(self.reserve_0),
@@ -141,9 +141,9 @@ impl UniswapV2Pool {
         }
     }
 
-    pub fn simulate_swap_mut(&mut self, token_in: H160, amount_in: U256) -> U256 {
+    pub fn simulate_swap_mut(&mut self, token_in: &H160, amount_in: U256) -> U256 {
         let amount_out = self.simulate_swap(token_in, amount_in);
-        if self.token_a == token_in {
+        if &self.token_a == token_in {
             self.reserve_0 += amount_in.as_u128();
             self.reserve_1 -= amount_out.as_u128();
         } else {

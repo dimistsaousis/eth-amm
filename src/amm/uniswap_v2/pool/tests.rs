@@ -49,7 +49,7 @@ async fn test_simulate_swap() {
         .unwrap()
         .checked_div(U256::from(997))
         .unwrap();
-    let amount_out = pool.simulate_swap(pool.token_b, amount_in).as_u128();
+    let amount_out = pool.simulate_swap(&pool.token_b, amount_in).as_u128();
     let price = pool.price(pool.token_b);
     let expected_amount_no_slippage: f64 = price * 10f64.powi(pool.token_a_decimals as i32);
     let diff = (amount_out as f64 / expected_amount_no_slippage - 1f64).abs();

@@ -52,15 +52,15 @@ async fn test_get_pair_address() {
     let a1 = factory
         .get_pair_address(
             provider.http.clone(),
-            book.mainnet.erc20["weth"],
-            book.mainnet.erc20["usdc"],
+            &book.mainnet.erc20["weth"],
+            &book.mainnet.erc20["usdc"],
         )
         .await;
     let a2 = factory
         .get_pair_address(
             provider.http.clone(),
-            book.mainnet.erc20["usdc"],
-            book.mainnet.erc20["weth"],
+            &book.mainnet.erc20["usdc"],
+            &book.mainnet.erc20["weth"],
         )
         .await;
     assert_eq!(a1, a2);

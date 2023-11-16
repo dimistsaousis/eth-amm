@@ -143,7 +143,7 @@ mod tests {
         for t in tokens.clone().into_iter().combinations(2) {
             if let [t1, t2] = t.as_slice() {
                 let pool_address = factory
-                    .get_pair_address(provider.http.clone(), *t1, *t2)
+                    .get_pair_address(provider.http.clone(), t1, t2)
                     .await;
                 let pool =
                     UniswapV2Pool::from_address(provider.http.clone(), pool_address, 300).await;

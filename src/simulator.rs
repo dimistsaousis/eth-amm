@@ -100,8 +100,8 @@ impl Simulation {
         for i in 0..(path.len() - 1) {
             futures.push(factory.get_pair_address(
                 provider.http.clone(),
-                path.as_slice()[i],
-                path.as_slice()[i + 1],
+                &path.as_slice()[i],
+                &path.as_slice()[i + 1],
             ))
         }
         let pairs = future::join_all(futures).await;
@@ -189,7 +189,7 @@ impl Simulation {
         let mut amount = amount;
         let mut amounts = vec![amount];
         for pool in &self.path {
-            amount = pool.simulate_swap(token, amount);
+            amount = pool.simulate_swap(&token, amount);
             token = pool.get_token_out(&token);
             amounts.push(amount);
         }
@@ -264,22 +264,22 @@ mod tests {
         let weth_usdc = factory
             .get_pair_address(
                 provider.http.clone(),
-                book.mainnet.erc20["weth"],
-                book.mainnet.erc20["usdc"],
+                &book.mainnet.erc20["weth"],
+                &book.mainnet.erc20["usdc"],
             )
             .await;
         let usdc_matic = factory
             .get_pair_address(
                 provider.http.clone(),
-                book.mainnet.erc20["matic"],
-                book.mainnet.erc20["usdc"],
+                &book.mainnet.erc20["matic"],
+                &book.mainnet.erc20["usdc"],
             )
             .await;
         let matic_weth = factory
             .get_pair_address(
                 provider.http.clone(),
-                book.mainnet.erc20["matic"],
-                book.mainnet.erc20["weth"],
+                &book.mainnet.erc20["matic"],
+                &book.mainnet.erc20["weth"],
             )
             .await;
         let pools: Vec<UniswapV2Pool> = vec![

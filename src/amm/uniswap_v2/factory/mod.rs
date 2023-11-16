@@ -36,12 +36,12 @@ impl UniswapV2Factory {
     pub async fn get_pair_address<M: Middleware>(
         &self,
         middleware: Arc<M>,
-        token_a: H160,
-        token_b: H160,
+        token_a: &H160,
+        token_b: &H160,
     ) -> H160 {
         let address = self
             .contract(middleware)
-            .get_pair(token_a, token_b)
+            .get_pair(*token_a, *token_b)
             .call()
             .await
             .expect(
