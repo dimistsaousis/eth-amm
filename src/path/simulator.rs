@@ -1,4 +1,4 @@
-use std::{error::Error, vec};
+use std::{collections::HashMap, error::Error, vec};
 
 use ethers::{
     abi::{ParamType, Token},
@@ -6,6 +6,7 @@ use ethers::{
 };
 
 use crate::{
+    amm::uniswap_v2::pool::UniswapV2Pool,
     contract::{IErc20, IUniswapRouter, SimulatorV1},
     eth_provider::EthProvider,
 };
@@ -68,12 +69,30 @@ pub async fn simulate_using_router(
     Ok(last_token_erc20.balance_of(public_key).await? - current_balance)
 }
 
+pub fn simulate_swap_using_pools(
+    amount_in: U256,
+    path: Vec<H160>,
+    pool_map: HashMap<(&H160, &H160), &UniswapV2Pool>,
+) -> U256 {
+    let mut amount = amount_in;
+    for i in 0..path.len() - 1 {
+        let token_in = &path[i];
+        let token_out = &path[i + 1];
+        let pool = pool_map[&(token_in, token_out)];
+        amount = pool.simulate_swap(token_in, amount);
+    }
+    amount
+}
+
 #[cfg(test)]
 mod tests {
     use std::str::FromStr;
 
     use super::*;
-    use crate::address_book::AddressBook;
+    use crate::{
+        address_book::AddressBook, amm::uniswap_v2::factory::UniswapV2Factory,
+        checkpoint::Checkpoint,
+    };
     use ethers::types::H160;
     use serial_test::serial;
 
@@ -85,6 +104,7 @@ mod tests {
         H160,
         String,
         U256,
+        Checkpoint<Vec<UniswapV2Pool>>,
     ) {
         dotenv::dotenv().ok();
         let local_provider = EthProvider::new_local().await;
@@ -100,6 +120,8 @@ mod tests {
         let private_key =
             "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80".to_string();
         let amount_in = U256::exp10(17);
+        let factory = UniswapV2Factory::new(book.mainnet.uniswap_v2.factory, 300);
+        let pools = Checkpoint::<Vec<UniswapV2Pool>>::get(&alchemy_provider, factory, 100).await;
         (
             book,
             local_provider,
@@ -108,13 +130,14 @@ mod tests {
             public_key,
             private_key,
             amount_in,
+            pools,
         )
     }
 
     #[tokio::test]
     #[serial]
     async fn test_simulate_using_router() {
-        let (book, local_provider, _, path, public_key, private_key, amount_in) = setup().await;
+        let (book, local_provider, _, path, public_key, private_key, amount_in, _) = setup().await;
         let result = simulate_using_router(
             &local_provider,
             book.mainnet.uniswap_v2.router,
@@ -131,7 +154,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_simulate_swap_using_simulator_v1() {
-        let (_, _, alchemy_provider, path, _, _, amount_in) = setup().await;
+        let (_, _, alchemy_provider, path, _, _, amount_in, _) = setup().await;
         let result = simulate_swap_using_simulator_v1(&alchemy_provider, amount_in, path)
             .await
             .unwrap();
@@ -142,7 +165,7 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn test_simulate_compare_router_and_simulator_v1() {
-        let (book, local_provider, alchemy_provider, path, public_key, private_key, amount_in) =
+        let (book, local_provider, alchemy_provider, path, public_key, private_key, amount_in, _) =
             setup().await;
         local_provider.reset_local_to_alchemy_fork().await.unwrap();
         let router_result = simulate_using_router(
@@ -160,5 +183,24 @@ mod tests {
                 .await
                 .unwrap();
         assert_eq!(router_result, simulator_v1_result);
+    }
+
+    #[tokio::test]
+    async fn test_simulate_swap_using_pools() {
+        let (_, _, _, path, _, _, amount_in, pools) = setup().await;
+        let result = simulate_swap_using_pools(amount_in, path, pools.token_to_pool_map());
+        assert_ne!(result, U256::zero());
+        assert!(result < amount_in);
+    }
+
+    #[tokio::test]
+    async fn test_simulate_compare_simulator_v1_and_pool() {
+        let (_, _, alchemy_provider, path, _, _, amount_in, pools) = setup().await;
+        let simulator_v1_result =
+            simulate_swap_using_simulator_v1(&alchemy_provider, amount_in, path.clone())
+                .await
+                .unwrap();
+        let pool_result = simulate_swap_using_pools(amount_in, path, pools.token_to_pool_map());
+        assert_eq!(pool_result, simulator_v1_result);
     }
 }
