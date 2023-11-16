@@ -7,4 +7,5 @@ pub mod contract;
 pub mod filters;
 pub mod middleware;
 pub mod pair_paths;
+pub mod path;
 pub mod simulator;
