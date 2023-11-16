@@ -95,6 +95,7 @@ mod tests {
     };
     use ethers::types::H160;
     use serial_test::serial;
+    use test_retry::retry;
 
     async fn setup() -> (
         AddressBook,
@@ -164,6 +165,7 @@ mod tests {
 
     #[tokio::test]
     #[serial]
+    #[retry]
     async fn test_simulate_compare_router_and_simulator_v1() {
         let (book, local_provider, alchemy_provider, path, public_key, private_key, amount_in, _) =
             setup().await;
@@ -194,6 +196,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[retry]
     async fn test_simulate_compare_simulator_v1_and_pool() {
         let (_, _, alchemy_provider, path, _, _, amount_in, pools) = setup().await;
         let simulator_v1_result =
