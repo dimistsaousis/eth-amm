@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{error::Error, sync::Arc};
 
 use ethers::{
     middleware::SignerMiddleware,
@@ -6,7 +6,13 @@ use ethers::{
     signers::LocalWallet,
     types::{H160, U256},
 };
+use lazy_static::lazy_static;
 use serde_json::json;
+use std::sync::Mutex;
+
+lazy_static! {
+    pub static ref LOCAL_NODE_TEST_MUTEX: Mutex<()> = Mutex::new(());
+}
 
 pub struct EthProvider {
     pub http: Arc<Provider<Http>>,
@@ -42,7 +48,8 @@ impl EthProvider {
         Self::new(rpc_endpoint, wss_endpoint).await
     }
 
-    pub async fn reset_local_to_alchemy_fork(&self) {
+    pub async fn reset_local_to_alchemy_fork(&self) -> Result<(), Box<dyn Error>> {
+        let client = reqwest::Client::new();
         let reset_payload = json!({
             "jsonrpc": "2.0",
             "method": "hardhat_reset",
@@ -53,10 +60,12 @@ impl EthProvider {
             }],
             "id": 1
         });
-        self.http
-            .request::<_, serde_json::Value>("hardhat_reset", reset_payload)
-            .await
-            .unwrap();
+        client
+            .post(self.http.url().to_string())
+            .json(&reset_payload)
+            .send()
+            .await?;
+        Ok(())
     }
 
     pub fn clone(self) -> Arc<EthProvider> {
@@ -104,5 +113,17 @@ impl EthProvider {
                 .await
                 .unwrap(),
         )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_reset_local_to_alchemy_fork() {
+        let _guard = LOCAL_NODE_TEST_MUTEX.lock().unwrap();
+        let provider = EthProvider::new_local().await;
+        provider.reset_local_to_alchemy_fork().await.unwrap();
     }
 }
