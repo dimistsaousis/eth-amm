@@ -73,8 +73,9 @@ mod tests {
     use std::str::FromStr;
 
     use super::*;
-    use crate::{address_book::AddressBook, eth_provider::LOCAL_NODE_TEST_MUTEX};
+    use crate::address_book::AddressBook;
     use ethers::types::H160;
+    use serial_test::serial;
 
     async fn setup() -> (
         AddressBook,
@@ -111,9 +112,9 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn test_simulate_using_router() {
         let (book, local_provider, _, path, public_key, private_key, amount_in) = setup().await;
-        let _guard = LOCAL_NODE_TEST_MUTEX.lock().unwrap();
         let result = simulate_using_router(
             &local_provider,
             book.mainnet.uniswap_v2.router,
@@ -139,10 +140,10 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn test_simulate_compare_router_and_simulator_v1() {
         let (book, local_provider, alchemy_provider, path, public_key, private_key, amount_in) =
             setup().await;
-        let _guard = LOCAL_NODE_TEST_MUTEX.lock().unwrap();
         local_provider.reset_local_to_alchemy_fork().await.unwrap();
         let router_result = simulate_using_router(
             &local_provider,

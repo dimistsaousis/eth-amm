@@ -6,13 +6,7 @@ use ethers::{
     signers::LocalWallet,
     types::{H160, U256},
 };
-use lazy_static::lazy_static;
 use serde_json::json;
-use std::sync::Mutex;
-
-lazy_static! {
-    pub static ref LOCAL_NODE_TEST_MUTEX: Mutex<()> = Mutex::new(());
-}
 
 pub struct EthProvider {
     pub http: Arc<Provider<Http>>,
@@ -122,7 +116,6 @@ mod tests {
 
     #[tokio::test]
     async fn test_reset_local_to_alchemy_fork() {
-        let _guard = LOCAL_NODE_TEST_MUTEX.lock().unwrap();
         let provider = EthProvider::new_local().await;
         provider.reset_local_to_alchemy_fork().await.unwrap();
     }
