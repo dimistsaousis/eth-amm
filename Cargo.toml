@@ -8,7 +8,6 @@ edition = "2021"
 [dependencies]
 dotenv = "0.15.0"
 reqwest = "0.11"
-serial_test = "0.5"
 ethers = { version = "2.0.8", default-features = true, features = ["abigen", "ws", "ipc", "rustls"] }
 tokio = { version = "1.29.1", features = ["full"] }
 eyre = "0.6.8"
@@ -22,3 +21,8 @@ rand = "0.8.5"
 maplit = "1.0.2"
 serde_yaml = "0.8"
 csv = "1.1"
+
+[dev-dependencies]
+test_retry = "0.1.0"
+serial_test = "0.5"
+
