@@ -1,6 +1,6 @@
 use ethers::types::{H160, U256};
 use serde::{Deserialize, Serialize};
-use std::{fs, str::FromStr};
+use std::{collections::HashMap, fs, str::FromStr};
 
 use crate::{
     amm::{
@@ -206,6 +206,15 @@ impl Checkpoint<Vec<UniswapV2Pool>> {
             pool.eth_value = *weth_values.get(&pool.address).unwrap_or(&U256::zero());
         }
         self.save_data();
+    }
+
+    pub fn token_to_pool_map(&self) -> HashMap<(&H160, &H160), &UniswapV2Pool> {
+        let mut map = HashMap::new();
+        for pool in &self.data {
+            map.insert((&pool.token_a, &pool.token_b), pool);
+            map.insert((&pool.token_b, &pool.token_a), pool);
+        }
+        map
     }
 }
 
