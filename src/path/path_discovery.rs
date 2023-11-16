@@ -1,14 +1,17 @@
-use std::collections::{HashMap, HashSet};
-
-use ethers::types::H160;
 use itertools::Itertools;
+use std::collections::{HashMap, HashSet};
+use std::fmt::Display;
+use std::hash::Hash;
 
-pub fn get_all_token_paths<'a>(
-    start_token: &'a H160,
-    tokens_map: &'a HashMap<&H160, Vec<&'a H160>>,
+pub fn get_all_token_paths<'a, T>(
+    start_token: &'a T,
+    tokens_map: &'a HashMap<&T, Vec<&'a T>>,
     min_length: usize,
     max_length: usize,
-) -> Vec<Vec<&'a H160>> {
+) -> Vec<Vec<&'a T>>
+where
+    T: Eq + Hash + ToString + Display,
+{
     let mut paths = Vec::new();
     let mut visited = HashSet::new();
     let mut current_path = vec![start_token];
@@ -27,17 +30,19 @@ pub fn get_all_token_paths<'a>(
     paths
 }
 
-fn find_paths_recursive<'b>(
-    start_token: &'b H160,
-    current_token: &'b H160,
-    tokens_map: &'b HashMap<&H160, Vec<&'b H160>>,
+fn find_paths_recursive<'a, T>(
+    start_token: &'a T,
+    current_token: &'a T,
+    tokens_map: &'a HashMap<&T, Vec<&'a T>>,
     min_length: usize,
     max_length: usize,
-    visited: &mut HashSet<&'b H160>,
-    current_path: &mut Vec<&'b H160>,
-    paths: &mut Vec<Vec<&'b H160>>,
+    visited: &mut HashSet<&'a T>,
+    current_path: &mut Vec<&'a T>,
+    paths: &mut Vec<Vec<&'a T>>,
     unique_paths: &mut HashSet<String>,
-) {
+) where
+    T: Eq + Hash + ToString + Display,
+{
     if current_path.len() > max_length {
         return;
     }
@@ -79,6 +84,8 @@ fn find_paths_recursive<'b>(
 
 #[cfg(test)]
 mod tests {
+    use ethers::types::H160;
+
     use super::*;
     use crate::address_book::AddressBook;
 
