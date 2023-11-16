@@ -1,5 +1,5 @@
 use super::*;
-use crate::{address_book::AddressBook, middleware::EthProvider};
+use crate::{address_book::AddressBook, eth_provider::EthProvider};
 
 struct SetupResult(UniswapV2Factory, EthProvider, AddressBook);
 

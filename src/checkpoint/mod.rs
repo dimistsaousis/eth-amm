@@ -10,7 +10,7 @@ use crate::{
         },
         weth_value::get_weth_value_in_pool_concurrent,
     },
-    middleware::EthProvider,
+    eth_provider::EthProvider,
 };
 
 #[derive(Serialize, Deserialize)]
@@ -218,7 +218,7 @@ mod tests {
         address_book::AddressBook,
         amm::uniswap_v2::{factory::UniswapV2Factory, pool::UniswapV2Pool},
         checkpoint::Checkpoint,
-        middleware::EthProvider,
+        eth_provider::EthProvider,
     };
 
     #[tokio::test]

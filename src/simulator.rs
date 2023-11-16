@@ -1,7 +1,7 @@
 use crate::{
     amm::uniswap_v2::{factory::UniswapV2Factory, pool::UniswapV2Pool},
     contract::{IErc20, IUniswapRouter, SimulatorV1, SwapParams},
-    middleware::EthProvider,
+    eth_provider::EthProvider,
 };
 use csv::Writer;
 use ethers::{
@@ -250,7 +250,7 @@ mod tests {
     use super::*;
     use crate::{
         address_book::AddressBook, amm::uniswap_v2::factory::UniswapV2Factory,
-        middleware::EthProvider,
+        eth_provider::EthProvider,
     };
 
     struct SetupResult(EthProvider, Simulation, AddressBook);

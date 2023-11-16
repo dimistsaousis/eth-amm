@@ -105,7 +105,7 @@ pub async fn get_weth_value_in_pool_concurrent<M: Middleware>(
 mod tests {
     use super::*;
     use crate::{
-        address_book::AddressBook, amm::uniswap_v2::pool::UniswapV2Pool, middleware::EthProvider,
+        address_book::AddressBook, amm::uniswap_v2::pool::UniswapV2Pool, eth_provider::EthProvider,
     };
 
     fn almost_equal(v1: f64, v2: f64, epsilon: f64) -> bool {

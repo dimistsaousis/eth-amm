@@ -7,7 +7,7 @@ use ethers::{
 
 use crate::{
     contract::{IErc20, IUniswapRouter, SimulatorV1},
-    middleware::EthProvider,
+    eth_provider::EthProvider,
 };
 
 pub async fn simulate_swap_using_simulator_v1(

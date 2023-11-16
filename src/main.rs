@@ -1,4 +1,4 @@
-use eth_amm::{address_book::AddressBook, middleware::EthProvider, simulator::Simulation};
+use eth_amm::{address_book::AddressBook, eth_provider::EthProvider, simulator::Simulation};
 use ethers::types::{Address, U256};
 use eyre::Result;
 use std::str::FromStr;

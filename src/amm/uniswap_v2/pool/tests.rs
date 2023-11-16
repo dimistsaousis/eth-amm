@@ -1,5 +1,5 @@
 use super::*;
-use crate::{address_book::AddressBook, middleware::EthProvider};
+use crate::{address_book::AddressBook, eth_provider::EthProvider};
 use maplit::hashset;
 struct SetupResult(UniswapV2Pool, EthProvider, AddressBook);
 

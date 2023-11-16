@@ -119,7 +119,7 @@ mod tests {
     use super::*;
     use crate::{
         address_book::AddressBook, amm::uniswap_v2::factory::UniswapV2Factory,
-        middleware::EthProvider,
+        eth_provider::EthProvider,
     };
     use itertools::Itertools;
 
