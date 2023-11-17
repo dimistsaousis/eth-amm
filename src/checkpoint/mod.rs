@@ -221,18 +221,28 @@ impl Checkpoint<Vec<UniswapV2Pool>> {
 #[cfg(test)]
 mod tests {
     use crate::tests::fixtures;
+    use std::sync::Arc;
 
     #[tokio::test]
     async fn test_checkpoint_sync_pools_from_logs() {
-        let fixture = fixtures::Fixtures::new().await;
+        let fixture = Arc::new(fixtures::Fixtures::new().await);
         let random_pools = fixture.random_pools(100);
         assert_eq!(random_pools.len(), 100);
+
         let reserves_futures = random_pools
             .clone()
             .into_iter()
-            .map(|p| async move { p.get_reserves(fixture.alchemy_provider.http.clone()).await })
+            .map(|p| {
+                let fixture_clone = fixture.clone();
+                async move {
+                    p.get_reserves(fixture_clone.alchemy_provider.http.clone())
+                        .await
+                }
+            })
             .collect::<Vec<_>>();
+
         let reserves = futures::future::join_all(reserves_futures).await;
+
         for idx in 0..reserves.len() {
             assert_eq!(
                 random_pools[idx].reserve_0, reserves[idx].0,
