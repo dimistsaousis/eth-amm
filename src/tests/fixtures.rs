@@ -24,6 +24,7 @@ pub struct Fixtures {
     pub uniswap_v2_factory: UniswapV2Factory,
     pub pools: Checkpoint<Vec<UniswapV2Pool>>,
     pub weth_usdc_uniswap_v2_pool: UniswapV2Pool,
+    pub weth_link_matic_weth_path: Vec<H160>,
     pub local_node_account: Account,
 }
 
@@ -53,6 +54,12 @@ impl Fixtures {
             private_key: "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
                 .to_string(),
         };
+        let weth_link_matic_weth_path = vec![
+            book.mainnet.erc20["weth"],
+            book.mainnet.erc20["link"],
+            book.mainnet.erc20["matic"],
+            book.mainnet.erc20["weth"],
+        ];
         Fixtures {
             alchemy_provider,
             local_provider,
@@ -60,6 +67,7 @@ impl Fixtures {
             uniswap_v2_factory,
             pools,
             weth_usdc_uniswap_v2_pool,
+            weth_link_matic_weth_path,
             local_node_account,
         }
     }
