@@ -20,6 +20,7 @@ pub struct Fixtures {
     pub book: AddressBook,
     pub uniswap_v2_factory: UniswapV2Factory,
     pub pools: Checkpoint<Vec<UniswapV2Pool>>,
+    pub weth_usdc_uniswap_v2_pool: UniswapV2Pool,
 }
 
 impl Fixtures {
@@ -32,12 +33,19 @@ impl Fixtures {
         let pools =
             Checkpoint::<Vec<UniswapV2Pool>>::get(&alchemy_provider, &uniswap_v2_factory, 100)
                 .await;
+        let weth_usdc_uniswap_v2_pool = UniswapV2Pool::from_address(
+            alchemy_provider.http.clone(),
+            book.mainnet.uniswap_v2.pairs["weth"]["usdc"],
+            300,
+        )
+        .await;
         Fixtures {
             alchemy_provider,
             local_provider,
             book,
             uniswap_v2_factory,
             pools,
+            weth_usdc_uniswap_v2_pool,
         }
     }
 
@@ -51,5 +59,9 @@ impl Fixtures {
             .choose_multiple(&mut rng, size)
             .cloned()
             .collect()
+    }
+
+    pub fn assert_almost_equal(v1: f64, v2: f64, epsilon: f64) {
+        assert!((v1 / v2 - 1f64).abs() < epsilon);
     }
 }
