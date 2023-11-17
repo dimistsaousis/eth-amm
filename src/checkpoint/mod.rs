@@ -52,7 +52,7 @@ impl<T: for<'a> Deserialize<'a> + Serialize> Checkpoint<T> {
 impl Checkpoint<Vec<H160>> {
     async fn create(
         provider: &EthProvider,
-        factory: UniswapV2Factory,
+        factory: &UniswapV2Factory,
         step: usize,
         id: &str,
         current_block: u64,
@@ -70,7 +70,7 @@ impl Checkpoint<Vec<H160>> {
     async fn update(
         mut self,
         provider: &EthProvider,
-        factory: UniswapV2Factory,
+        factory: &UniswapV2Factory,
         step: usize,
         current_block: u64,
     ) -> Self {
@@ -88,7 +88,7 @@ impl Checkpoint<Vec<H160>> {
     }
     pub async fn sync_uniswap_v2_pair_addresses(
         provider: &EthProvider,
-        factory: UniswapV2Factory,
+        factory: &UniswapV2Factory,
         step: usize,
     ) -> Self {
         let id = format!("uniswap_v2_pair_addresses.{:?}", factory.address);
@@ -118,7 +118,7 @@ impl Checkpoint<Vec<UniswapV2Pool>> {
 
     async fn create(
         provider: &EthProvider,
-        factory: UniswapV2Factory,
+        factory: &UniswapV2Factory,
         id: &str,
         step: usize,
         current_block: u64,
@@ -134,7 +134,7 @@ impl Checkpoint<Vec<UniswapV2Pool>> {
     async fn update(
         &mut self,
         provider: &EthProvider,
-        factory: UniswapV2Factory,
+        factory: &UniswapV2Factory,
         step: usize,
         current_block: u64,
     ) {
@@ -169,7 +169,7 @@ impl Checkpoint<Vec<UniswapV2Pool>> {
         self.last_block = current_block;
     }
 
-    pub async fn get(provider: &EthProvider, factory: UniswapV2Factory, step: usize) -> Self {
+    pub async fn get(provider: &EthProvider, factory: &UniswapV2Factory, step: usize) -> Self {
         let id = Self::id(&factory.address);
         let current_block = provider.get_block_number().await;
         let checkpoint = match Self::load_data(&id) {
@@ -186,7 +186,7 @@ impl Checkpoint<Vec<UniswapV2Pool>> {
     pub async fn sync(&mut self, provider: &EthProvider) {
         let factory = UniswapV2Factory::new(self.factory_address(), 300);
         let current_block = provider.get_block_number().await;
-        self.update(provider, factory, 100, current_block).await;
+        self.update(provider, &factory, 100, current_block).await;
         self.save_data()
     }
 
@@ -220,54 +220,26 @@ impl Checkpoint<Vec<UniswapV2Pool>> {
 
 #[cfg(test)]
 mod tests {
-    use itertools::Itertools;
-    use rand::{seq::SliceRandom, thread_rng};
-
-    use crate::{
-        address_book::AddressBook,
-        amm::uniswap_v2::{factory::UniswapV2Factory, pool::UniswapV2Pool},
-        checkpoint::Checkpoint,
-        eth_provider::EthProvider,
-    };
+    use crate::tests::fixtures;
 
     #[tokio::test]
     async fn test_checkpoint_sync_pools_from_logs() {
-        dotenv::dotenv().ok();
-        let provider = EthProvider::new_alchemy().await;
-        let book = AddressBook::new();
-        let factory: UniswapV2Factory = UniswapV2Factory::new(book.mainnet.uniswap_v2.factory, 300);
-        let pools = Checkpoint::<Vec<UniswapV2Pool>>::get(&provider, factory, 10).await;
-        // Randomly choose 100 elements
-        let mut rng = thread_rng();
-        let random_pools: Vec<_> = pools
-            .data
-            .into_iter()
-            .filter(|p| p.token_a_decimals > 0 && p.token_b_decimals > 0 && p.reserve_0 > 0)
-            .collect_vec()
-            .choose_multiple(&mut rng, 1000)
-            .cloned()
-            .collect();
-
+        let fixture = fixtures::setup().await;
+        let random_pools = fixture.random_pools(1000);
         assert_eq!(random_pools.len(), 1000);
-        // Use cloned data in async calls
-        let futures = random_pools
+        let reserves_futures = random_pools
             .clone()
             .into_iter()
-            .map(|p| {
-                let http_client = provider.http.clone();
-                async move { p.get_reserves(http_client).await }
-            })
+            .map(|p| async move { p.get_reserves(fixture.alchemy_provider.http.clone()).await })
             .collect::<Vec<_>>();
-
-        let results = futures::future::join_all(futures).await;
-
-        for idx in 0..results.len() {
+        let reserves = futures::future::join_all(reserves_futures).await;
+        for idx in 0..reserves.len() {
             assert_eq!(
-                random_pools[idx].reserve_0, results[idx].0,
+                random_pools[idx].reserve_0, reserves[idx].0,
                 "{:?}",
                 random_pools[idx].address
             );
-            assert_eq!(random_pools[idx].reserve_1, results[idx].1);
+            assert_eq!(random_pools[idx].reserve_1, reserves[idx].1);
         }
     }
 }
