@@ -5,7 +5,7 @@ use maplit::hashset;
 
 #[tokio::test]
 async fn test_get_reserves() {
-    let fixture = fixtures::setup().await;
+    let fixture = fixtures::Fixtures::new().await;
     let pool = fixture.weth_usdc_uniswap_v2_pool.clone();
     let http = fixture.alchemy_provider.http.clone();
     let (r0, r1) = pool.get_reserves(http).await;
@@ -15,7 +15,7 @@ async fn test_get_reserves() {
 
 #[tokio::test]
 async fn test_sync_reserves() {
-    let fixture = fixtures::setup().await;
+    let fixture = fixtures::Fixtures::new().await;
     let mut pool = fixture.weth_usdc_uniswap_v2_pool.clone();
     let http = fixture.alchemy_provider.http.clone();
     let (r0, r1) = pool.get_reserves(http.clone()).await;
@@ -26,7 +26,7 @@ async fn test_sync_reserves() {
 
 #[tokio::test]
 async fn test_price() {
-    let fixture = fixtures::setup().await;
+    let fixture = fixtures::Fixtures::new().await;
     let pool = fixture.weth_usdc_uniswap_v2_pool.clone();
     let price = pool.price(pool.token_b);
     assert!(price < 2500.0);
@@ -35,7 +35,7 @@ async fn test_price() {
 
 #[tokio::test]
 async fn test_simulate_swap() {
-    let fixture = fixtures::setup().await;
+    let fixture = fixtures::Fixtures::new().await;
     let pool = fixture.weth_usdc_uniswap_v2_pool.clone();
     let amount_in = U256::from(1000)
         .checked_mul(U256::from(10).pow(U256::from(pool.token_b_decimals)))
@@ -51,7 +51,7 @@ async fn test_simulate_swap() {
 
 #[tokio::test]
 async fn test_get_token_decimals() {
-    let fixture = fixtures::setup().await;
+    let fixture = fixtures::Fixtures::new().await;
     let mut pool = fixture.weth_usdc_uniswap_v2_pool.clone();
     let http = fixture.alchemy_provider.http.clone();
     let (t0, t1) = pool.get_token_decimals(http).await;
@@ -61,7 +61,7 @@ async fn test_get_token_decimals() {
 
 #[tokio::test]
 async fn test_get_uniswap_v2_pool_data_concurrent() {
-    let fixture = fixtures::setup().await;
+    let fixture = fixtures::Fixtures::new().await;
     let pool = fixture.weth_usdc_uniswap_v2_pool.clone();
     let http = fixture.alchemy_provider.http.clone();
     let addresses = vec![pool.address];
@@ -76,7 +76,7 @@ async fn test_get_uniswap_v2_pool_data_concurrent() {
 
 #[tokio::test]
 async fn test_factory() {
-    let fixture = fixtures::setup().await;
+    let fixture = fixtures::Fixtures::new().await;
     let pool = fixture.weth_usdc_uniswap_v2_pool.clone();
     let http = fixture.alchemy_provider.http.clone();
     assert_eq!(
@@ -87,7 +87,7 @@ async fn test_factory() {
 
 #[tokio::test]
 async fn test_sync_events() {
-    let fixture = fixtures::setup().await;
+    let fixture = fixtures::Fixtures::new().await;
     let mut pool = fixture.weth_usdc_uniswap_v2_pool.clone();
     let http = fixture.alchemy_provider.http.clone();
     pool.sync_reserves(http.clone()).await;
@@ -108,7 +108,7 @@ async fn test_sync_events() {
 
 #[tokio::test]
 async fn test_sync_pools_from_logs() {
-    let fixture = fixtures::setup().await;
+    let fixture = fixtures::Fixtures::new().await;
     let mut pool = fixture.weth_usdc_uniswap_v2_pool.clone();
     let http = fixture.alchemy_provider.http.clone();
     pool.reserve_0 = 0;

@@ -94,7 +94,7 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn test_simulate_using_router() {
-        let fixture = fixtures::setup().await;
+        let fixture = fixtures::Fixtures::new().await;
         let amount_in = U256::exp10(17);
         let result = simulate_using_router(
             &fixture.local_provider,
@@ -112,7 +112,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_simulate_swap_using_simulator_v1() {
-        let fixture = fixtures::setup().await;
+        let fixture = fixtures::Fixtures::new().await;
         let amount_in = U256::exp10(17);
         let result = simulate_swap_using_simulator_v1(
             &fixture.alchemy_provider,
@@ -129,7 +129,7 @@ mod tests {
     #[serial]
     #[retry]
     async fn test_simulate_compare_router_and_simulator_v1() {
-        let fixture = fixtures::setup().await;
+        let fixture = fixtures::Fixtures::new().await;
         let amount_in = U256::exp10(17);
         fixture
             .local_provider
@@ -158,7 +158,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_simulate_swap_using_pools() {
-        let fixture = fixtures::setup().await;
+        let fixture = fixtures::Fixtures::new().await;
         let amount_in = U256::exp10(17);
         let result = simulate_swap_using_pools(
             amount_in,
@@ -172,7 +172,7 @@ mod tests {
     #[tokio::test]
     #[retry]
     async fn test_simulate_compare_simulator_v1_and_pool() {
-        let fixture = fixtures::setup().await;
+        let fixture = fixtures::Fixtures::new().await;
         let amount_in = U256::exp10(17);
         let simulator_v1_result = simulate_swap_using_simulator_v1(
             &fixture.alchemy_provider,

@@ -105,10 +105,12 @@ pub async fn get_weth_value_in_pool_concurrent<M: Middleware>(
 mod tests {
     use super::*;
     use crate::tests::fixtures::{self, Fixtures};
+    use serial_test::serial;
 
     #[tokio::test]
+    #[serial]
     async fn test_get_weth_value_in_pool_concurrent() {
-        let fixture = fixtures::setup().await;
+        let fixture = fixtures::Fixtures::new().await;
         let http = fixture.alchemy_provider.http.clone();
         let weth_threshold = U256::from(10).pow(U256::from(18));
         let pool_addresses = vec![fixture.book.mainnet.uniswap_v2.pairs["weth"]["usdc"]];

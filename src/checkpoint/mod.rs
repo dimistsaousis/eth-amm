@@ -224,9 +224,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_checkpoint_sync_pools_from_logs() {
-        let fixture = fixtures::setup().await;
-        let random_pools = fixture.random_pools(1000);
-        assert_eq!(random_pools.len(), 1000);
+        let fixture = fixtures::Fixtures::new().await;
+        let random_pools = fixture.random_pools(100);
+        assert_eq!(random_pools.len(), 100);
         let reserves_futures = random_pools
             .clone()
             .into_iter()

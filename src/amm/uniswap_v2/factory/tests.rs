@@ -2,7 +2,7 @@ use crate::tests::fixtures;
 
 #[tokio::test]
 async fn test_get_pair_addresses_from_factory_concurrent_success() {
-    let fixture = fixtures::setup().await;
+    let fixture = fixtures::Fixtures::new().await;
     let result = fixture
         .uniswap_v2_factory
         .get_pair_addresses_from_factory(0, 10, 1, fixture.alchemy_provider.http.clone())
@@ -12,7 +12,7 @@ async fn test_get_pair_addresses_from_factory_concurrent_success() {
 
 #[tokio::test]
 async fn test_get_pair_addresses_from_factory_concurrent_failure() {
-    let fixture = fixtures::setup().await;
+    let fixture = fixtures::Fixtures::new().await;
     let result = fixture
         .uniswap_v2_factory
         .get_pair_addresses_from_factory(
@@ -27,7 +27,7 @@ async fn test_get_pair_addresses_from_factory_concurrent_failure() {
 
 #[tokio::test]
 async fn test_get_pair_addresses_from_logs_success() {
-    let fixture = fixtures::setup().await;
+    let fixture = fixtures::Fixtures::new().await;
     let result = fixture
         .uniswap_v2_factory
         .get_pair_addresses_from_logs_concurrent(
@@ -42,7 +42,7 @@ async fn test_get_pair_addresses_from_logs_success() {
 
 #[tokio::test]
 async fn test_all_pairs_length() {
-    let fixture = fixtures::setup().await;
+    let fixture = fixtures::Fixtures::new().await;
     let result = fixture
         .uniswap_v2_factory
         .all_pairs_length(fixture.alchemy_provider.http.clone())
@@ -52,7 +52,7 @@ async fn test_all_pairs_length() {
 
 #[tokio::test]
 async fn test_get_pair_address() {
-    let fixture = fixtures::setup().await;
+    let fixture = fixtures::Fixtures::new().await;
     let a1 = fixture
         .uniswap_v2_factory
         .get_pair_address(

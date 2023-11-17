@@ -9,13 +9,6 @@ use crate::{
 use ethers::types::H160;
 use itertools::Itertools;
 use rand::{seq::SliceRandom, thread_rng};
-use tokio::sync::OnceCell;
-
-static TEST_FIXTURES: OnceCell<Fixtures> = OnceCell::const_new();
-
-pub async fn setup() -> &'static Fixtures {
-    TEST_FIXTURES.get_or_init(Fixtures::new).await
-}
 
 pub struct Fixtures {
     pub alchemy_provider: EthProvider,
@@ -34,7 +27,7 @@ pub struct Account {
 }
 
 impl Fixtures {
-    async fn new() -> Fixtures {
+    pub async fn new() -> Fixtures {
         dotenv::dotenv().ok();
         let alchemy_provider = EthProvider::new_alchemy().await;
         let local_provider = EthProvider::new_local().await;
