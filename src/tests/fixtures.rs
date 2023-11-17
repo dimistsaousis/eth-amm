@@ -1,9 +1,12 @@
+use std::str::FromStr;
+
 use crate::{
     address_book::AddressBook,
     amm::uniswap_v2::{factory::UniswapV2Factory, pool::UniswapV2Pool},
     checkpoint::Checkpoint,
     eth_provider::EthProvider,
 };
+use ethers::types::H160;
 use itertools::Itertools;
 use rand::{seq::SliceRandom, thread_rng};
 use tokio::sync::OnceCell;
@@ -21,6 +24,12 @@ pub struct Fixtures {
     pub uniswap_v2_factory: UniswapV2Factory,
     pub pools: Checkpoint<Vec<UniswapV2Pool>>,
     pub weth_usdc_uniswap_v2_pool: UniswapV2Pool,
+    pub local_node_account: Account,
+}
+
+pub struct Account {
+    pub address: H160,
+    pub private_key: String,
 }
 
 impl Fixtures {
@@ -39,6 +48,11 @@ impl Fixtures {
             300,
         )
         .await;
+        let local_node_account = Account {
+            address: H160::from_str("0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266").unwrap(),
+            private_key: "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
+                .to_string(),
+        };
         Fixtures {
             alchemy_provider,
             local_provider,
@@ -46,6 +60,7 @@ impl Fixtures {
             uniswap_v2_factory,
             pools,
             weth_usdc_uniswap_v2_pool,
+            local_node_account,
         }
     }
 
