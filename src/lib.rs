@@ -6,7 +6,6 @@ pub mod concurrent;
 pub mod contract;
 pub mod eth_provider;
 pub mod filters;
-pub mod pair_paths;
 pub mod path;
 pub mod simulator;
 pub mod tests;
