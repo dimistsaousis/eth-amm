@@ -71,8 +71,8 @@ pub async fn simulate_using_router(
 
 pub fn simulate_swap_using_pools(
     amount_in: U256,
-    path: Vec<H160>,
-    pool_map: HashMap<(&H160, &H160), &UniswapV2Pool>,
+    path: &Vec<H160>,
+    pool_map: &HashMap<(&H160, &H160), &UniswapV2Pool>,
 ) -> U256 {
     let mut amount = amount_in;
     for i in 0..path.len() - 1 {
@@ -122,7 +122,7 @@ mod tests {
             "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80".to_string();
         let amount_in = U256::exp10(17);
         let factory = UniswapV2Factory::new(book.mainnet.uniswap_v2.factory, 300);
-        let pools = Checkpoint::<Vec<UniswapV2Pool>>::get(&alchemy_provider, factory, 100).await;
+        let pools = Checkpoint::<Vec<UniswapV2Pool>>::get(&alchemy_provider, &factory, 100).await;
         (
             book,
             local_provider,
@@ -190,7 +190,7 @@ mod tests {
     #[tokio::test]
     async fn test_simulate_swap_using_pools() {
         let (_, _, _, path, _, _, amount_in, pools) = setup().await;
-        let result = simulate_swap_using_pools(amount_in, path, pools.token_to_pool_map());
+        let result = simulate_swap_using_pools(amount_in, &path, &pools.token_to_pool_map());
         assert_ne!(result, U256::zero());
         assert!(result < amount_in);
     }
@@ -203,7 +203,7 @@ mod tests {
             simulate_swap_using_simulator_v1(&alchemy_provider, amount_in, path.clone())
                 .await
                 .unwrap();
-        let pool_result = simulate_swap_using_pools(amount_in, path, pools.token_to_pool_map());
+        let pool_result = simulate_swap_using_pools(amount_in, &path, &pools.token_to_pool_map());
         assert_eq!(pool_result, simulator_v1_result);
     }
 }
