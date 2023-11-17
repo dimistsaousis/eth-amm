@@ -104,42 +104,28 @@ pub async fn get_weth_value_in_pool_concurrent<M: Middleware>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        address_book::AddressBook, amm::uniswap_v2::pool::UniswapV2Pool, eth_provider::EthProvider,
-    };
-
-    fn almost_equal(v1: f64, v2: f64, epsilon: f64) -> bool {
-        (v1 / v2 - 1f64).abs() < epsilon
-    }
+    use crate::tests::fixtures::{self, Fixtures};
 
     #[tokio::test]
     async fn test_get_weth_value_in_pool_concurrent() {
-        dotenv::dotenv().ok();
-        let provider = EthProvider::new_alchemy().await;
-        let book = AddressBook::new();
+        let fixture = fixtures::setup().await;
+        let http = fixture.alchemy_provider.http.clone();
         let weth_threshold = U256::from(10).pow(U256::from(18));
-        let pool_addresses = vec![book.mainnet.uniswap_v2.pairs["weth"]["usdc"]];
-        let factory_addresses = vec![book.mainnet.uniswap_v2.factory];
+        let pool_addresses = vec![fixture.book.mainnet.uniswap_v2.pairs["weth"]["usdc"]];
+        let factory_addresses = vec![fixture.book.mainnet.uniswap_v2.factory];
+        let weth_address = fixture.book.mainnet.erc20["weth"];
         let weth_values = get_weth_value_in_pool_concurrent(
             &pool_addresses,
             &factory_addresses,
-            book.mainnet.erc20["weth"],
+            weth_address.clone(),
             weth_threshold,
             5,
-            provider.http.clone(),
+            http,
         )
         .await;
-        let pool = UniswapV2Pool::from_address(
-            provider.http.clone(),
-            book.mainnet.uniswap_v2.pairs["weth"]["usdc"],
-            300,
-        )
-        .await;
-        let weth_usdt_value = weth_values[&book.mainnet.uniswap_v2.pairs["weth"]["usdc"]];
-        assert!(almost_equal(
-            weth_usdt_value.as_u128() as f64,
-            (pool.get_reserve_for_token(book.mainnet.erc20["weth"]) * 2) as f64,
-            0.0005
-        ));
+        let pool = &fixture.weth_usdc_uniswap_v2_pool;
+        let weth_usdt_value = weth_values[&pool.address].as_u128() as f64;
+        let weth_reserve = pool.get_reserve_for_token(&weth_address) as f64;
+        Fixtures::assert_almost_equal(weth_usdt_value, weth_reserve * 2.0, 0.0005);
     }
 }
