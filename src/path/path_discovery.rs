@@ -84,10 +84,9 @@ fn find_paths_recursive<'a, T>(
 
 #[cfg(test)]
 mod tests {
-    use ethers::types::H160;
-
     use super::*;
     use crate::address_book::AddressBook;
+    use ethers::types::H160;
 
     fn setup(book: &AddressBook) -> HashMap<&H160, Vec<&H160>> {
         let tokens = vec![
